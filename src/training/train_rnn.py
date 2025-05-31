@@ -2,9 +2,15 @@
 Training script for the RNN trajectory prediction model
 """
 
-import os
-import sys
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error
+import matplotlib.pyplot as plt
 from pathlib import Path
+import torch.nn as nn
+import numpy as np
+import torch
+import sys
+import os
 
 # Add the project root to the Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -12,13 +18,6 @@ project_root = os.path.dirname(os.path.dirname(current_dir))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-import torch
-import torch.nn as nn
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import StandardScaler
-from datetime import datetime
 
 
 class EarlyStopping:
