@@ -134,12 +134,6 @@ class FeatureSelector:
         # Create a dict of feature scores
         feature_score_dict = dict(zip(feature_names, feature_importance))
         
-        # Print scores for mandatory features
-        print(f"\nMandatory feature scores:")
-        for feat in self.mandatory_features:
-            if feat in feature_score_dict:
-                print(f"  {feat}: {feature_score_dict[feat]:.4f}")
-        
         # Get top features (excluding mandatory ones first)
         non_mandatory_features = [f for f in feature_names if f not in self.mandatory_features]
         non_mandatory_scores = [(f, feature_score_dict[f]) for f in non_mandatory_features]

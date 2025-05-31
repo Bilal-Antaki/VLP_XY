@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent / 'src'))
 
 # Import the feature selection module which includes feature engineering
-from data.feature_engineering import main as run_feature_engineering
+from src.data.feature_engineering import main as run_feature_engineering
 
 # Create a wrapper to also run feature selection
 def run_complete_pipeline(selection_method='lasso'):
@@ -37,7 +37,7 @@ def run_complete_pipeline(selection_method='lasso'):
     print("-"*40)
     
     # Import and run feature selection with the specified method
-    from data.feature_selection import main as run_feature_selection
+    from src.data.feature_selection import main as run_feature_selection
     selected_features = run_feature_selection(method=selection_method)
     
     print("\n" + "="*60)

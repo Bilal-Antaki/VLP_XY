@@ -128,7 +128,7 @@ class FeatureEngineer:
             features_df[f'{col}_diff2'] = features_df.groupby('trajectory_id')[f'{col}_diff'].diff()
         
         # Fill NaN values with appropriate methods
-        features_df = features_df.fillna(method='bfill').fillna(method='ffill').fillna(0)
+        features_df = features_df.bfill().ffill().fillna(0)
         
         return features_df
     
