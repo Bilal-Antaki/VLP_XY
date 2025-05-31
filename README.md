@@ -1,238 +1,143 @@
-# Position Estimation Using Channel Impulse Response (CIR) Data
+# Trajectory Prediction Feature Pipeline
 
-An enhanced machine learning framework for position estimation using Path Loss (PL) and RMS delay spread features from wireless channel measurements.
+This feature pipeline consists of three main components for preparing trajectory data for machine learning models.
 
-## 🚀 Key Enhancements
-
-### 1. **Expanded Model Library**
-- **Linear Models**: Linear, Ridge, Lasso, ElasticNet, Polynomial Regression
-- **Support Vector Machines**: SVR with RBF, Linear, and Polynomial kernels
-- **Tree-Based Ensembles**: Random Forest, Gradient Boosting, Extra Trees, AdaBoost
-- **Neural Networks**: MLP (sklearn & PyTorch), LSTM
-- **Advanced Ensembles**: Voting, Bagging, XGBoost, LightGBM
-- **Neighbor-Based**: KNN with various distance metrics
-
-### 2. **Feature Engineering**
-- Automatic feature creation (ratios, products, powers, logs)
-- Domain-specific wireless propagation features
-- Coordinate-based features (polar, Manhattan distance)
-- Statistical features across datasets
-- Feature selection methods (correlation, mutual information)
-
-### 3. **Comprehensive Evaluation**
-- Multiple metrics: RMSE, MAE, R², MAPE, percentile errors
-- Cross-validation with confidence intervals
-- Statistical significance testing
-- Residual analysis and normality tests
-- Model comparison frameworks
-
-### 4. **Enhanced Visualization**
-- Feature correlation heatmaps
-- Model performance comparisons
-- Residual plots
-- Training history visualization
-- 2D position heatmaps
-- Error distribution analysis
-
-## 📂 Project Structure
+## Project Structure
 
 ```
-Position_Estimation_Code/
+Position_Estimation_XY/
 ├── data/
-│   ├── raw/           # Original PL and RMS CSV files
-│   └── processed/     # Combined CIR CSV files
+│   ├── processed/
+│   │   └── FCPR-D1_CIR.csv          # Original data file
+│   └── features/
+│       ├── features_all.csv          # All engineered features
+│       ├── features_selected.csv     # Selected best features
+│       └── feature_importance.png    # Feature importance visualization
 ├── src/
-│   ├── data/
-│   │   ├── loader.py              # Data loading utilities
-│   │   ├── preprocessing.py       # Data preprocessing
-│   │   ├── data_processing.py     # Raw to CIR conversion
-│   │   └── feature_engineering.py # Feature creation
-│   ├── models/
-│   │   ├── linear.py             # Linear models
-│   │   ├── svr.py                # Support Vector Regressors
-│   │   ├── knn.py                # K-Nearest Neighbors
-│   │   ├── mlp.py                # Neural Networks
-│   │   ├── ensemble.py           # Ensemble methods
-│   │   ├── lstm.py               # LSTM implementation
-│   │   └── model_registry.py     # Central model registry
-│   ├── training/
-│   │   ├── train_sklearn.py      # Basic sklearn training
-│   │   ├── train_dl.py           # Deep learning training
-│   │   └── train_enhanced.py     # Enhanced training with all models
-│   ├── evaluation/
-│   │   ├── metrics.py            # Comprehensive metrics
-│   │   └── visualization.py      # Plotting utilities
-│   └── utils/
-├── main.py                # Original main script
-├── main_enhanced.py       # Enhanced analysis script
-├── requirements.txt       # Python dependencies
-└── README.md             # This file
+│   └── data/
+│       ├── loader.py                 # Data loading module
+│       ├── feature_engineering.py    # Feature engineering module
+│       └── feature_selection.py      # Feature selection module
+└── run_feature_pipeline.py           # Main pipeline script
 ```
 
-## 🔧 Installation
+## Modules Overview
+
+### 1. Data Loader (`src/data/loader.py`)
+
+The `TrajectoryDataLoader` class handles:
+- Loading the CSV data file
+- Validating required columns (X, Y, PL, RMS)
+- Splitting data into trajectories (20 trajectories × 10 steps each)
+- Separating training (16 trajectories) and validation (4 trajectories) sets
+
+### 2. Feature Engineering (`src/data/feature_engineering.py`)
+
+The `FeatureEngineer` class creates various features from PL and RMS values:
+
+**Basic Features:**
+- Squared and cubed transformations
+- Logarithmic transformations
+- Square root transformations
+- Reciprocal transformations
+
+**Interaction Features:**
+- Multiplicative interactions (PL×RMS, PL²×RMS, etc.)
+- Ratio features (PL/RMS, RMS/PL)
+- Difference features (PL-RMS, PL+RMS)
+- Harmonic and geometric means
+
+**Temporal Features:**
+- Lag features (previous 1-2 steps)
+- Lead features (next step)
+- Rolling statistics (mean, std)
+- Differences (first and second order)
+
+**Polynomial Features:**
+- All polynomial combinations up to degree 3
+
+### 3. Feature Selection (`src/data/feature_selection.py`)
+
+The `FeatureSelector` class selects the best features using multiple methods:
+
+**Selection Methods:**
+1. **Lasso Regularization**: Uses L1 penalty to identify important features
+2. **Mutual Information**: Measures non-linear dependencies between features and targets
+3. **Random Forest**: Uses tree-based feature importance
+
+**Combination Strategy:**
+- Features are scored by each method
+- Final selection based on weighted combination (70% average score, 30% voting)
+- Selects top 25 features by default
+
+## Usage
+
+### Quick Start
+
+From the project root directory, simply run:
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd Position_Estimation_Code
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Optional: Install advanced ML libraries
-pip install xgboost lightgbm
+python run_feature_pipeline.py
 ```
 
-## 🏃 Quick Start
+This will:
+1. Load the data from `data/processed/FCPR-D1_CIR.csv`
+2. Engineer all features and save to `data/features/features_all.csv`
+3. Select the best features and save to `data/features/features_selected.csv`
+4. Generate a feature importance plot at `data/features/feature_importance.png`
 
-### 1. Basic Usage
+### Individual Module Usage
+
+#### Loading Data Only
 ```python
-# Run original comparison (Linear, SVR, LSTM)
-python main.py
+from src.data.loader import TrajectoryDataLoader
 
-# Run enhanced analysis with all models
-python main_enhanced.py
+loader = TrajectoryDataLoader()
+df = loader.load_data()
+train_df, val_df, train_ids, val_ids = loader.split_trajectories(df)
 ```
 
-### 2. Data Processing
+#### Feature Engineering Only
 ```python
-from src.data.data_processing import process_all_pairs
+from src.data.feature_engineering import FeatureEngineer
 
-# Convert raw PL/RMS files to CIR format
-process_all_pairs("data/raw", "data/processed", decimals=2)
+engineer = FeatureEngineer()
+features_df = engineer.engineer_all_features(df)
 ```
 
-### 3. Train Specific Models
+#### Feature Selection Only
 ```python
-from src.models.model_registry import get_model
-from src.data.loader import load_cir_data, extract_features_and_target
-from sklearn.model_selection import train_test_split
+from src.data.feature_selection import FeatureSelector
 
-# Load data
-df = load_cir_data("data/processed", filter_keyword="FCPR-D1")
-X, y = extract_features_and_target(df)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
-# Train a model
-model = get_model("random_forest", n_estimators=200)
-model.fit(X_train, y_train)
-predictions = model.predict(X_test)
+selector = FeatureSelector(target_cols=['X', 'Y'])
+selected_features = selector.select_features(n_features=25)
 ```
 
-### 4. Feature Engineering
-```python
-from src.data.feature_engineering import create_engineered_features
+## Output Files
 
-# Create enhanced features
-df_enhanced = create_engineered_features(df, include_coordinates=True)
+1. **`features_all.csv`**: Contains all engineered features (~60-80 features)
+2. **`features_selected.csv`**: Contains only the selected best features (25 by default)
+3. **`feature_importance.png`**: Visualization of feature importance scores from each method
 
-# Select best features
-selected_features = select_features(df_enhanced, y, method='correlation')
-```
+## Requirements
 
-## 📊 Model Performance
+- pandas
+- numpy
+- scikit-learn
+- matplotlib
+- seaborn
 
-Typical performance on FCPR-D1 dataset (RMSE in meters):
+## Notes
 
-| Model | RMSE | Training Time |
-|-------|------|---------------|
-| Random Forest | ~50-60 | Fast |
-| XGBoost | ~45-55 | Moderate |
-| LSTM | ~60-70 | Slow |
-| Ridge Regression | ~70-80 | Very Fast |
-| SVR RBF | ~55-65 | Moderate |
+- The pipeline handles NaN values by filling them appropriately
+- Features are normalized during selection but saved in original scale
+- The selected features maintain the trajectory structure (trajectory_id, step_id)
+- Target columns (X, Y) are preserved in all output files
 
-## 🔬 Advanced Features
+## Next Steps
 
-### Hyperparameter Tuning
-```python
-from src.training.train_enhanced import hyperparameter_search
-
-param_grid = {
-    'n_estimators': [100, 200, 300],
-    'max_depth': [10, 20, None],
-    'min_samples_split': [2, 5, 10]
-}
-
-best_params = hyperparameter_search('random_forest', X_train, y_train, param_grid)
-```
-
-### Custom Model Pipeline
-```python
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from src.models.model_registry import get_model
-
-pipeline = Pipeline([
-    ('scaler', StandardScaler()),
-    ('model', get_model('mlp', hidden_layers=(100, 50, 25)))
-])
-```
-
-### Cross-Environment Training
-```python
-# Train on multiple environments
-df_all = pd.concat([
-    load_cir_data(processed_dir, filter_keyword="FCPR"),
-    load_cir_data(processed_dir, filter_keyword="ICU")
-])
-```
-
-## 📈 Results Visualization
-
-The enhanced framework provides comprehensive visualization:
-- Feature importance plots
-- Learning curves
-- Prediction vs actual scatter plots
-- Residual analysis
-- Cross-validation scores
-- Model comparison dashboards
-
-## 🔮 Future Enhancements
-
-1. **Deep Learning Models**
-   - GRU and Transformer architectures
-   - CNN for spatial pattern recognition
-   - Attention mechanisms for feature importance
-
-2. **Advanced Features**
-   - Frequency domain features
-   - Wavelet transforms
-   - Auto-encoder features
-
-3. **Online Learning**
-   - Incremental model updates
-   - Adaptive algorithms
-
-4. **Deployment**
-   - Model serialization
-   - REST API for predictions
-   - Real-time inference
-
-## 🤝 Contributing
-
-Feel free to add more algorithms or enhance existing ones:
-
-1. Add new model implementations in `src/models/`
-2. Register them in `model_registry.py`
-3. Update training scripts to include new models
-4. Add tests and documentation
-
-## 📝 Citation
-
-If you use this code in your research, please cite:
-```
-@software{position_estimation_cir,
-  title = {Position Estimation Using Channel Impulse Response},
-  year = {2024},
-  url = {https://github.com/your-repo}
-}
-```
-
-## 📧 Contact
-
-For questions or suggestions, please open an issue on GitHub.
+After running this pipeline, you can:
+1. Load the selected features for model training
+2. Use the features to train models for X,Y position prediction
+3. Evaluate models using RMSE metric
+4. Apply distance constraints (299-601 units) in post-processing

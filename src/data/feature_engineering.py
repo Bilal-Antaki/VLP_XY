@@ -1,0 +1,241 @@
+"""
+Feature engineering for trajectory prediction
+Generates feature interactions from PL and RMS values
+"""
+
+import pandas as pd
+import numpy as np
+from pathlib import Path
+import os
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import PolynomialFeatures
+import sys
+
+# Add parent directory to path to import loader
+sys.path.append(str(Path(__file__).parent.parent))
+from data.loader import TrajectoryDataLoader
+
+
+class FeatureEngineer:
+    def __init__(self):
+        """Initialize the feature engineer"""
+        self.scaler = StandardScaler()
+        self.feature_names = []
+        
+    def create_basic_features(self, df):
+        """
+        Create basic feature transformations
+        
+        Parameters:
+        -----------
+        df : pd.DataFrame
+            DataFrame with PL and RMS columns
+            
+        Returns:
+        --------
+        pd.DataFrame : DataFrame with additional basic features
+        """
+        features_df = df.copy()
+        
+        # Basic transformations
+        features_df['PL_squared'] = df['PL'] ** 2
+        features_df['RMS_squared'] = df['RMS'] ** 2
+        features_df['PL_cubed'] = df['PL'] ** 3
+        features_df['RMS_cubed'] = df['RMS'] ** 3
+        
+        # Logarithmic transformations (add small constant to avoid log(0))
+        features_df['PL_log'] = np.log(df['PL'] + 1e-10)
+        features_df['RMS_log'] = np.log(df['RMS'] + 1e-10)
+        
+        # Square root transformations
+        features_df['PL_sqrt'] = np.sqrt(np.abs(df['PL']))
+        features_df['RMS_sqrt'] = np.sqrt(np.abs(df['RMS']))
+        
+        # Reciprocal transformations (avoid division by zero)
+        features_df['PL_reciprocal'] = 1 / (df['PL'] + 1e-10)
+        features_df['RMS_reciprocal'] = 1 / (df['RMS'] + 1e-10)
+        
+        return features_df
+    
+    def create_interaction_features(self, df):
+        """
+        Create interaction features between PL and RMS
+        
+        Parameters:
+        -----------
+        df : pd.DataFrame
+            DataFrame with basic features
+            
+        Returns:
+        --------
+        pd.DataFrame : DataFrame with interaction features
+        """
+        features_df = df.copy()
+        
+        # Multiplicative interactions
+        features_df['PL_RMS'] = df['PL'] * df['RMS']
+        features_df['PL_squared_RMS'] = df['PL'] ** 2 * df['RMS']
+        features_df['PL_RMS_squared'] = df['PL'] * df['RMS'] ** 2
+        features_df['PL_squared_RMS_squared'] = df['PL'] ** 2 * df['RMS'] ** 2
+        
+        # Ratio features
+        features_df['PL_RMS_ratio'] = df['PL'] / (df['RMS'] + 1e-10)
+        features_df['RMS_PL_ratio'] = df['RMS'] / (df['PL'] + 1e-10)
+        
+        # Difference features
+        features_df['PL_minus_RMS'] = df['PL'] - df['RMS']
+        features_df['PL_plus_RMS'] = df['PL'] + df['RMS']
+        features_df['abs_PL_minus_RMS'] = np.abs(df['PL'] - df['RMS'])
+        
+        # Complex interactions
+        features_df['PL_RMS_harmonic_mean'] = 2 * df['PL'] * df['RMS'] / (df['PL'] + df['RMS'] + 1e-10)
+        features_df['PL_RMS_geometric_mean'] = np.sqrt(np.abs(df['PL'] * df['RMS']))
+        
+        return features_df
+    
+    def create_temporal_features(self, df):
+        """
+        Create temporal features based on trajectory sequences
+        
+        Parameters:
+        -----------
+        df : pd.DataFrame
+            DataFrame with trajectory_id and step_id
+            
+        Returns:
+        --------
+        pd.DataFrame : DataFrame with temporal features
+        """
+        features_df = df.copy()
+        
+        # Sort by trajectory and step to ensure correct order
+        features_df = features_df.sort_values(['trajectory_id', 'step_id'])
+        
+        # Lag features (previous step)
+        for col in ['PL', 'RMS']:
+            features_df[f'{col}_lag1'] = features_df.groupby('trajectory_id')[col].shift(1)
+            features_df[f'{col}_lag2'] = features_df.groupby('trajectory_id')[col].shift(2)
+            
+            # Lead features (next step)
+            features_df[f'{col}_lead1'] = features_df.groupby('trajectory_id')[col].shift(-1)
+            
+            # Rolling statistics
+            features_df[f'{col}_rolling_mean_3'] = features_df.groupby('trajectory_id')[col].rolling(3, center=True, min_periods=1).mean().reset_index(drop=True)
+            features_df[f'{col}_rolling_std_3'] = features_df.groupby('trajectory_id')[col].rolling(3, center=True, min_periods=1).std().reset_index(drop=True)
+            
+            # Differences
+            features_df[f'{col}_diff'] = features_df.groupby('trajectory_id')[col].diff()
+            features_df[f'{col}_diff2'] = features_df.groupby('trajectory_id')[f'{col}_diff'].diff()
+        
+        # Fill NaN values with appropriate methods
+        features_df = features_df.fillna(method='bfill').fillna(method='ffill').fillna(0)
+        
+        return features_df
+    
+    def create_polynomial_features(self, df, degree=3):
+        """
+        Create polynomial features up to specified degree
+        
+        Parameters:
+        -----------
+        df : pd.DataFrame
+            DataFrame with PL and RMS
+        degree : int
+            Maximum polynomial degree
+            
+        Returns:
+        --------
+        pd.DataFrame : DataFrame with polynomial features
+        """
+        # Select only PL and RMS for polynomial features
+        base_features = df[['PL', 'RMS']].values
+        
+        # Create polynomial features
+        poly = PolynomialFeatures(degree=degree, include_bias=False)
+        poly_features = poly.fit_transform(base_features)
+        
+        # Get feature names
+        feature_names = poly.get_feature_names_out(['PL', 'RMS'])
+        
+        # Create DataFrame with polynomial features
+        poly_df = pd.DataFrame(poly_features, columns=feature_names, index=df.index)
+        
+        # Merge with original DataFrame
+        result_df = pd.concat([df, poly_df], axis=1)
+        
+        # Remove duplicate columns
+        result_df = result_df.loc[:, ~result_df.columns.duplicated()]
+        
+        return result_df
+    
+    def engineer_all_features(self, df):
+        """
+        Create all engineered features
+        
+        Parameters:
+        -----------
+        df : pd.DataFrame
+            Original DataFrame with X, Y, PL, RMS, trajectory_id, step_id
+            
+        Returns:
+        --------
+        pd.DataFrame : DataFrame with all engineered features
+        """
+        # Keep original columns
+        features_df = df.copy()
+        
+        # Create basic features
+        features_df = self.create_basic_features(features_df)
+        
+        # Create interaction features
+        features_df = self.create_interaction_features(features_df)
+        
+        # Create temporal features
+        features_df = self.create_temporal_features(features_df)
+        
+        # Create polynomial features
+        features_df = self.create_polynomial_features(features_df, degree=3)
+        
+        # Store feature names (excluding target and metadata columns)
+        exclude_cols = ['X', 'Y', 'r', 'trajectory_id', 'step_id']
+        self.feature_names = [col for col in features_df.columns if col not in exclude_cols]
+        
+        print(f"\nTotal features created: {len(self.feature_names)}")
+        print(f"Feature names: {self.feature_names[:10]}... (showing first 10)")
+        
+        return features_df
+
+
+def main():
+    """
+    Main function to load data, engineer features, and save results
+    """
+    # Load data
+    loader = TrajectoryDataLoader()
+    df = loader.load_data()
+    
+    # Split into trajectories
+    train_df, val_df, _, _ = loader.split_trajectories(df)
+    
+    # Combine train and val for feature engineering (will split later)
+    full_df = pd.concat([train_df, val_df], ignore_index=True)
+    
+    # Engineer features
+    engineer = FeatureEngineer()
+    features_df = engineer.engineer_all_features(full_df)
+    
+    # Create output directory if it doesn't exist
+    output_dir = Path('data/features')
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save all features
+    output_path = output_dir / 'features_all.csv'
+    features_df.to_csv(output_path, index=False)
+    print(f"\nSaved all features to: {output_path}")
+    print(f"Shape: {features_df.shape}")
+    
+    return features_df, engineer.feature_names
+
+
+if __name__ == "__main__":
+    features_df, feature_names = main()
