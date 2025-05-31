@@ -331,6 +331,9 @@ class FeatureSelector:
         
         # Create output DataFrame
         output_df = df[output_cols].copy()
+        for col in selected_features:
+            if col in output_df.columns:
+                output_df[col] = output_df[col].round(2)
         
         # Save to CSV
         output_path = Path('data/features/features_selected.csv')

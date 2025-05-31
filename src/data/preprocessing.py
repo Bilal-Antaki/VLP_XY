@@ -54,3 +54,5 @@ def load_and_preprocess_data(feature_file_path, train_trajectories=16, sequence_
 if __name__ == "__main__":
     feature_path = os.path.join(PROJECT_ROOT, "data", "features", "features_selected.csv")
     X_train, Y_train, X_val, Y_val = load_and_preprocess_data(feature_path)
+    print(X_val)
+    print(Y_val)
