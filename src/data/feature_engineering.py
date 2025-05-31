@@ -3,13 +3,13 @@ Feature engineering for trajectory prediction
 Generates feature interactions from PL and RMS values
 """
 
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import StandardScaler
+from pathlib import Path
 import pandas as pd
 import numpy as np
-from pathlib import Path
-import os
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import PolynomialFeatures
 import sys
+import os
 
 # Add parent directory to path to import loader
 sys.path.append(str(Path(__file__).parent.parent))
@@ -207,9 +207,6 @@ class FeatureEngineer:
 
 
 def main():
-    """
-    Main function to load data, engineer features, and save results
-    """
     # Load data
     loader = TrajectoryDataLoader()
     df = loader.load_data()
