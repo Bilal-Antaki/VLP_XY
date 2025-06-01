@@ -96,6 +96,7 @@ class FeatureEngineer:
     def create_temporal_features(self, df):
         """
         Create temporal features based on trajectory sequences
+        FIXED: Ensures temporal features are computed within each trajectory independently
         
         Parameters:
         -----------
@@ -109,26 +110,48 @@ class FeatureEngineer:
         features_df = df.copy()
         
         # Sort by trajectory and step to ensure correct order
-        features_df = features_df.sort_values(['trajectory_id', 'step_id'])
+        features_df = features_df.sort_values(['trajectory_id', 'step_id']).reset_index(drop=True)
         
-        # Lag features (previous step)
-        for col in ['PL', 'RMS']:
-            features_df[f'{col}_lag1'] = features_df.groupby('trajectory_id')[col].shift(1)
-            features_df[f'{col}_lag2'] = features_df.groupby('trajectory_id')[col].shift(2)
-            
-            # Lead features (next step)
-            features_df[f'{col}_lead1'] = features_df.groupby('trajectory_id')[col].shift(-1)
-            
-            # Rolling statistics
-            features_df[f'{col}_rolling_mean_3'] = features_df.groupby('trajectory_id')[col].rolling(3, center=True, min_periods=1).mean().reset_index(drop=True)
-            features_df[f'{col}_rolling_std_3'] = features_df.groupby('trajectory_id')[col].rolling(3, center=True, min_periods=1).std().reset_index(drop=True)
-            
-            # Differences
-            features_df[f'{col}_diff'] = features_df.groupby('trajectory_id')[col].diff()
-            features_df[f'{col}_diff2'] = features_df.groupby('trajectory_id')[f'{col}_diff'].diff()
+        # Process each trajectory independently to avoid data leakage
+        processed_trajectories = []
         
-        # Fill NaN values with appropriate methods
-        features_df = features_df.bfill().ffill().fillna(0)
+        for traj_id in features_df['trajectory_id'].unique():
+            traj_data = features_df[features_df['trajectory_id'] == traj_id].copy()
+            traj_data = traj_data.sort_values('step_id').reset_index(drop=True)
+            
+            # Lag features (previous step) - within trajectory only
+            for col in ['PL', 'RMS']:
+                traj_data[f'{col}_lag1'] = traj_data[col].shift(1)
+                traj_data[f'{col}_lag2'] = traj_data[col].shift(2)
+                
+                # Lead features (next step) - within trajectory only
+                traj_data[f'{col}_lead1'] = traj_data[col].shift(-1)
+                
+                # Rolling statistics - within trajectory only
+                traj_data[f'{col}_rolling_mean_3'] = traj_data[col].rolling(3, center=True, min_periods=1).mean()
+                traj_data[f'{col}_rolling_std_3'] = traj_data[col].rolling(3, center=True, min_periods=1).std()
+                
+                # Differences - within trajectory only
+                traj_data[f'{col}_diff'] = traj_data[col].diff()
+                traj_data[f'{col}_diff2'] = traj_data[f'{col}_diff'].diff()
+            
+            # Fill NaN values with trajectory-specific methods
+            # For lag features: forward fill within trajectory
+            lag_cols = [col for col in traj_data.columns if 'lag' in col or 'lead' in col]
+            for col in lag_cols:
+                traj_data[col] = traj_data[col].ffill().bfill()
+            
+            # For rolling and diff features: fill with trajectory mean
+            other_temporal_cols = [col for col in traj_data.columns 
+                                 if any(x in col for x in ['rolling', 'diff']) and col not in lag_cols]
+            for col in other_temporal_cols:
+                traj_data[col] = traj_data[col].fillna(traj_data[col].mean()).fillna(0)
+            
+            processed_trajectories.append(traj_data)
+        
+        # Combine all processed trajectories
+        features_df = pd.concat(processed_trajectories, ignore_index=True)
+        features_df = features_df.sort_values(['trajectory_id', 'step_id']).reset_index(drop=True)
         
         return features_df
     

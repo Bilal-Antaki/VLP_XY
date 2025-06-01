@@ -67,5 +67,5 @@ if __name__ == "__main__":
     
     # Run the complete pipeline
     features_df, selected_features, (X_train, Y_train, X_val, Y_val) = run_complete_pipeline(selection_method=METHOD)
-    print(X_train)
-    print(Y_train)
+    print(X_train.shape)
+    print(Y_train.shape)
