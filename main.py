@@ -76,11 +76,11 @@ def compare_models():
     from pathlib import Path
     
     # Check if all models exist
-    lstm_path = Path('models/saved/lstm_best_model.pth')
-    linear_path = Path('models/saved/linear_baseline_model.pkl')
-    svr_path = Path('models/saved/svr_model.pkl')
-    rf_path = Path('models/saved/rf_model.pkl')
-    xgb_path = Path('models/saved/xgb_model.pkl')
+    lstm_path = Path('results/models/lstm_best_model.pth')
+    linear_path = Path('results/models/linear_baseline_model.pkl')
+    svr_path = Path('results/models/svr_model.pkl')
+    rf_path = Path('results/models/rf_model.pkl')
+    xgb_path = Path('results/models/xgb_model.pkl')
     
     if not all([lstm_path.exists(), linear_path.exists(), svr_path.exists(), 
                 rf_path.exists(), xgb_path.exists()]):

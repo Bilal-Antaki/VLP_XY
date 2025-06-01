@@ -114,7 +114,7 @@ def train_model():
     print("Training complete!")
     
     # Save the model
-    model_dir = Path('models/saved')
+    model_dir = Path('results/models')
     model_dir.mkdir(parents=True, exist_ok=True)
     model_path = model_dir / 'svr_model.pkl'
     
@@ -170,7 +170,7 @@ def train_model():
 
 def load_and_evaluate():
     """Load saved model and evaluate"""
-    model_path = Path('models/saved/svr_model.pkl')
+    model_path = Path('results/models/svr_model.pkl')
     
     if not model_path.exists():
         print(f"Model not found at {model_path}. Train the model first.")

@@ -167,7 +167,7 @@ def train_model():
     model.load_state_dict(best_model_state)
     
     # Save the model
-    model_dir = Path('models/saved')
+    model_dir = Path('results/models')
     model_dir.mkdir(parents=True, exist_ok=True)
     model_path = model_dir / 'lstm_best_model.pth'
     torch.save({

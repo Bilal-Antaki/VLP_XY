@@ -58,7 +58,7 @@ def train_model():
     print("Training complete!")
     
     # Save model
-    model_dir = Path('models/saved')
+    model_dir = Path('results/models')
     model_dir.mkdir(parents=True, exist_ok=True)
     model_path = model_dir / 'rf_model.pkl'
     
