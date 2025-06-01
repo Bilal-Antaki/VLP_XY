@@ -214,7 +214,7 @@ class FeatureEngineer:
         features_df = self.create_interaction_features(features_df)
         
         # Create temporal features
-        features_df = self.create_temporal_features(features_df)
+        #features_df = self.create_temporal_features(features_df)
         
         # Create polynomial features
         features_df = self.create_polynomial_features(features_df, degree=3)

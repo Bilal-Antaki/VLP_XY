@@ -1,46 +1,82 @@
-import pandas as pd
+"""
+Linear regression baseline model for trajectory prediction
+"""
+
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
-# Load the data
-df = pd.read_csv('data/features/features_selected.csv')
 
-# Features and targets
-feature_cols = ['PL', 'RMS', 'PL_minus_RMS', 'abs_PL_minus_RMS',
-                'RMS_rolling_mean_3', 'PL_rolling_mean_3', 'RMS_lag2']
-target_cols = ['X', 'Y']
-
-X_features = df[feature_cols]
-y_targets = df[target_cols]
-
-# Train-validation split by trajectory_id
-train_ids = df['trajectory_id'].unique()[:16]
-val_ids = df['trajectory_id'].unique()[16:]
-
-train_df = df[df['trajectory_id'].isin(train_ids)]
-val_df = df[df['trajectory_id'].isin(val_ids)]
-
-X_train = train_df[feature_cols]
-y_train = train_df[target_cols]
-
-X_val = val_df[feature_cols]
-y_val = val_df[target_cols]
-
-# Fit separate models for X and Y
-model_X = LinearRegression()
-model_Y = LinearRegression()
-
-model_X.fit(X_train, y_train['X'])
-model_Y.fit(X_train, y_train['Y'])
-
-# Predict on validation set
-pred_X = model_X.predict(X_val)
-pred_Y = model_Y.predict(X_val)
-
-# Evaluate using RMSE
-rmse_X = np.sqrt(mean_squared_error(y_val['X'], pred_X))
-rmse_Y = np.sqrt(mean_squared_error(y_val['Y'], pred_Y))
-
-print(f"Validation RMSE - X: {rmse_X:.2f}, Y: {rmse_Y:.2f}")
+class LinearBaselineModel:
+    """
+    Simple linear regression baseline for trajectory prediction
+    Fits separate models for X and Y coordinates
+    """
+    
+    def __init__(self):
+        """Initialize the linear models and scalers"""
+        self.model_x = LinearRegression()
+        self.model_y = LinearRegression()
+        self.scaler_features = StandardScaler()
+        self.scaler_x = StandardScaler()
+        self.scaler_y = StandardScaler()
+        self.is_fitted = False
+        
+    def fit(self, X, y):
+        """
+        Fit the linear models
+        
+        Parameters:
+        -----------
+        X : array-like of shape (n_samples, n_features)
+            Training features
+        y : array-like of shape (n_samples, 2)
+            Target values [X, Y coordinates]
+        """
+        # Scale features
+        X_scaled = self.scaler_features.fit_transform(X)
+        
+        # Scale targets separately
+        y_x = y[:, 0].reshape(-1, 1)
+        y_y = y[:, 1].reshape(-1, 1)
+        
+        y_x_scaled = self.scaler_x.fit_transform(y_x).ravel()
+        y_y_scaled = self.scaler_y.fit_transform(y_y).ravel()
+        
+        # Fit models
+        self.model_x.fit(X_scaled, y_x_scaled)
+        self.model_y.fit(X_scaled, y_y_scaled)
+        
+        self.is_fitted = True
+        
+    def predict(self, X):
+        """
+        Make predictions
+        
+        Parameters:
+        -----------
+        X : array-like of shape (n_samples, n_features)
+            Features to predict on
+            
+        Returns:
+        --------
+        array-like of shape (n_samples, 2) : Predictions [X, Y]
+        """
+        if not self.is_fitted:
+            raise ValueError("Model must be fitted before making predictions")
+        
+        # Scale features
+        X_scaled = self.scaler_features.transform(X)
+        
+        # Predict
+        pred_x_scaled = self.model_x.predict(X_scaled)
+        pred_y_scaled = self.model_y.predict(X_scaled)
+        
+        # Inverse transform predictions
+        pred_x = self.scaler_x.inverse_transform(pred_x_scaled.reshape(-1, 1)).ravel()
+        pred_y = self.scaler_y.inverse_transform(pred_y_scaled.reshape(-1, 1)).ravel()
+        
+        # Combine predictions
+        predictions = np.column_stack([pred_x, pred_y])
+        
+        return predictions.astype(int)

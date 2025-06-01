@@ -9,18 +9,6 @@ MODEL_CONFIG = {
     'dropout': 0.3,
 }
 
-
-# GRU Model Configuration
-GRU_CONFIG = {
-    'hidden_dim': 128,        # Hidden dimension for GRU cells
-    'num_layers': 2,          # Number of GRU layers
-    'dropout': 0.3,           # Dropout rate between layers
-    'bidirectional': False,   # Whether to use bidirectional GRU
-    'use_attention': False,   # Whether to add attention mechanism
-    'attention_dim': 64,      # Dimension for attention layer if used
-}
-
-
 # Training Configuration
 TRAINING_CONFIG = {
     'learning_rate': 0.001,

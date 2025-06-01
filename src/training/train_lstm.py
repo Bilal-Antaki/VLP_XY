@@ -1,8 +1,3 @@
-"""
-Improved training script for LSTM model
-Better architecture, training strategy, and learning rate scheduling
-"""
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,10 +7,24 @@ import sys
 from pathlib import Path
 from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.metrics import mean_squared_error
+import random
+import os
 
 # Add src to path
-sys.path.append(str(Path(__file__).parent.parent))
-from models.lstm import TrajectoryLSTM
+sys.path.append(str(Path(__file__).parent.parent.parent))
+from src.models.lstm import TrajectoryLSTM
+from src.config import MODEL_CONFIG, TRAINING_CONFIG
+
+
+def set_seed(seed=42):
+    """Set all random seeds for reproducibility"""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    os.environ['PYTHONHASHSEED'] = str(seed)
 
 
 def prepare_data():
@@ -87,28 +96,33 @@ def prepare_data():
 
 
 def train_model():
-    """
-    Train improved LSTM model with better training strategy
-    """
+    # Set random seed for reproducibility
+    set_seed(TRAINING_CONFIG['random_seed'])
+    
     # Prepare data
     (X_train, Y_train, X_val, Y_val), (scaler_X, scaler_Y) = prepare_data()
     
-    # Model parameters
+    # Model parameters from config
     input_size = X_train.shape[-1]
-    hidden_size = 128
-    num_layers = 3
+    hidden_size = MODEL_CONFIG['hidden_dim']
+    num_layers = MODEL_CONFIG['num_layers']
+    dropout = MODEL_CONFIG['dropout']
     output_size = 2
     
     # Initialize model
-    model = TrajectoryLSTM(input_size, hidden_size, num_layers, output_size, dropout=0.3)
+    model = TrajectoryLSTM(input_size, hidden_size, num_layers, output_size, dropout=dropout)
     
-    # Loss and optimizer
+    # Loss and optimizer with config values
     criterion = nn.MSELoss()
-    optimizer = optim.AdamW(model.parameters(), lr=0.01, weight_decay=1e-4)
+    optimizer = optim.AdamW(
+        model.parameters(), 
+        lr=TRAINING_CONFIG['learning_rate'], 
+        weight_decay=TRAINING_CONFIG['weight_decay']
+    )
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=20)
     
     # Training with early stopping
-    epochs = 500
+    epochs = TRAINING_CONFIG['epochs']
     best_val_loss = float('inf')
     patience = 50
     patience_counter = 0
@@ -151,6 +165,25 @@ def train_model():
     
     # Load best model
     model.load_state_dict(best_model_state)
+    
+    # Save the model
+    model_dir = Path('models/saved')
+    model_dir.mkdir(parents=True, exist_ok=True)
+    model_path = model_dir / 'lstm_best_model.pth'
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'model_config': {
+            'input_size': input_size,
+            'hidden_size': hidden_size,
+            'num_layers': num_layers,
+            'output_size': output_size,
+            'dropout': dropout
+        },
+        'scaler_X': scaler_X,
+        'scaler_Y': scaler_Y,
+        'best_val_loss': best_val_loss.item()
+    }, model_path)
+    print(f"\nModel saved to: {model_path}")
     
     # Final evaluation
     model.eval()

@@ -362,7 +362,7 @@ class FeatureSelector:
             print(f"{i:2d}. {feature}")
 
 
-def main(method='lasso'):
+def main(method='random_forest'):
     """
     Main function to perform feature selection
     
@@ -378,8 +378,3 @@ def main(method='lasso'):
     selected_features = selector.select_features()
     
     return selected_features
-
-
-if __name__ == "__main__":
-    # You can change this to 'random_forest' if you prefer
-    selected_features = main(method='lasso')

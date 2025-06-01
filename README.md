@@ -141,3 +141,149 @@ After running this pipeline, you can:
 2. Use the features to train models for X,Y position prediction
 3. Evaluate models using RMSE metric
 4. Apply distance constraints (299-601 units) in post-processing
+
+## LSTM Model Training
+
+### Training the Models
+
+The project now supports training both LSTM and Linear baseline models. You have several options:
+
+#### Interactive Mode
+Simply run without arguments to get an interactive menu:
+
+```bash
+python main.py
+```
+
+You'll see:
+```
+Position Estimation Model Training
+-----------------------------------
+1. Train LSTM model
+2. Train Linear baseline model
+3. Train both models
+4. Exit
+
+Select option (1-4):
+```
+
+#### Command Line Mode
+Use command-line arguments for automated workflows:
+
+```bash
+# Train only LSTM model
+python main.py --model lstm
+
+# Train only Linear baseline model
+python main.py --model linear
+
+# Train both models (default)
+python main.py --model both
+
+# Train both and compare
+python main.py --model both --compare
+```
+
+#### Direct Training
+You can also run the training scripts directly:
+
+```bash
+# Train LSTM
+python src/training/train_lstm.py
+
+# Train Linear baseline
+python src/training/train_linear.py
+```
+
+### Model Outputs
+
+- **LSTM Model**: Saved to `models/saved/lstm_best_model.pth`
+  - Includes model weights, architecture config, scalers, and best validation loss
+  
+- **Linear Model**: Saved to `models/saved/linear_baseline_model.pkl`
+  - Includes fitted model, feature count, and training configuration
+
+### Reproducibility Features
+
+The LSTM implementation includes several features to ensure reproducibility:
+
+1. **Random Seed Control**: All random number generators (Python, NumPy, PyTorch) are seeded with a configurable value (default: 42)
+2. **Deterministic Algorithms**: PyTorch is configured to use deterministic algorithms where possible
+3. **Model Saving**: The best model is automatically saved with its configuration and preprocessing scalers
+4. **Configuration Management**: All hyperparameters are centralized in `src/config.py`
+
+### Model Configuration
+
+Edit `src/config.py` to adjust model parameters:
+
+```python
+MODEL_CONFIG = {
+    'hidden_dim': 128,      # LSTM hidden layer size
+    'num_layers': 3,        # Number of LSTM layers
+    'dropout': 0.3,         # Dropout rate
+}
+
+TRAINING_CONFIG = {
+    'learning_rate': 0.001,
+    'batch_size': 8,
+    'epochs': 250,
+    'weight_decay': 1e-5,
+    'random_seed': 42       # For reproducibility
+}
+```
+
+### Using the Trained Model
+
+To load and use a trained model for inference:
+
+```bash
+python inference_example.py
+```
+
+Or in your own code:
+
+```python
+from src.utils.model_utils import load_model, predict
+
+# Load model
+model, scaler_X, scaler_Y, config = load_model('models/saved/lstm_best_model.pth')
+
+# Prepare your data (shape: [batch_size, seq_len, n_features])
+X_test = ...  # Your feature data
+
+# Make predictions
+predictions = predict(model, X_test, scaler_X, scaler_Y)
+```
+
+### Reproducibility Checklist
+
+To ensure others can reproduce your results:
+
+1. **Dependencies**: Install exact versions from `requirements.txt`:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Data**: Ensure the input data file exists at `data/processed/FCPR-D1_CIR.csv`
+
+3. **Feature Pipeline**: Run the feature engineering pipeline first:
+   ```bash
+   python run_feature_pipeline.py
+   ```
+
+4. **Training**: Train the model with the same configuration:
+   ```bash
+   python main.py
+   ```
+
+5. **Hardware**: Note that while CPU results should be identical, GPU results may have minor variations due to floating-point operations
+
+### Model Output
+
+The trained model is saved to `models/saved/lstm_best_model.pth` and includes:
+- Model weights
+- Model architecture configuration
+- Input/output scalers
+- Best validation loss
+
+This ensures that the exact same model can be loaded and used for inference later.
