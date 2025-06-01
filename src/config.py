@@ -32,6 +32,14 @@ XGB_CONFIG = {
     'random_state': 42
 }
 
+# MLP Configuration
+MLP_CONFIG = {
+    'hidden_sizes': [128, 64, 32],  # Architecture: input -> 128 -> 64 -> 32 -> output
+    'dropout': 0.3,
+    'learning_rate': 0.005,
+    'epochs': 800
+}
+
 # Training Configuration
 TRAINING_CONFIG = {
     'learning_rate': 0.001,

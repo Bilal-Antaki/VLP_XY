@@ -14,13 +14,14 @@ from src.training.train_linear import train_model as train_linear
 from src.training.train_svr import train_model as train_svr
 from src.training.train_rf import train_model as train_rf
 from src.training.train_xgb import train_model as train_xgb
+from src.training.train_mlp import train_model as train_mlp
 
 
 def main():
     """Run model training based on command line arguments"""
     parser = argparse.ArgumentParser(description='Train models for position estimation')
     parser.add_argument('--model', type=str, default='all', 
-                        choices=['lstm', 'linear', 'svr', 'rf', 'xgb', 'all'],
+                        choices=['lstm', 'linear', 'svr', 'rf', 'xgb', 'mlp', 'all'],
                         help='Which model to train (default: all)')
     parser.add_argument('--compare', action='store_true',
                         help='Compare results of all models')
@@ -62,6 +63,13 @@ def main():
         train_xgb()
         print("\n")
     
+    if args.model in ['mlp', 'all']:
+        print("=" * 60)
+        print("Training MLP (Multi-Layer Perceptron) Model")
+        print("=" * 60)
+        train_mlp()
+        print("\n")
+    
     if args.compare and args.model == 'all':
         print("=" * 60)
         print("Model Comparison Summary")
@@ -81,9 +89,10 @@ def compare_models():
     svr_path = Path('results/models/svr_model.pkl')
     rf_path = Path('results/models/rf_model.pkl')
     xgb_path = Path('results/models/xgb_model.pkl')
+    mlp_path = Path('results/models/mlp_model.pkl')
     
     if not all([lstm_path.exists(), linear_path.exists(), svr_path.exists(), 
-                rf_path.exists(), xgb_path.exists()]):
+                rf_path.exists(), xgb_path.exists(), mlp_path.exists()]):
         print("All models need to be trained first for comparison.")
         return
     
@@ -104,10 +113,11 @@ if __name__ == "__main__":
         print("3. Train SVR model")
         print("4. Train Random Forest model")
         print("5. Train XGBoost model")
-        print("6. Train all models")
-        print("7. Exit")
+        print("6. Train MLP model")
+        print("7. Train all models")
+        print("8. Exit")
         
-        choice = input("\nSelect option (1-7): ")
+        choice = input("\nSelect option (1-8): ")
         
         if choice == '1':
             sys.argv.extend(['--model', 'lstm'])
@@ -120,8 +130,10 @@ if __name__ == "__main__":
         elif choice == '5':
             sys.argv.extend(['--model', 'xgb'])
         elif choice == '6':
-            sys.argv.extend(['--model', 'all'])
+            sys.argv.extend(['--model', 'mlp'])
         elif choice == '7':
+            sys.argv.extend(['--model', 'all'])
+        elif choice == '8':
             print("Exiting...")
             sys.exit(0)
         else:
