@@ -11,34 +11,58 @@ sys.path.append(str(Path(__file__).parent / 'src'))
 
 from src.training.train_lstm import train_model as train_lstm
 from src.training.train_linear import train_model as train_linear
+from src.training.train_svr import train_model as train_svr
+from src.training.train_rf import train_model as train_rf
+from src.training.train_xgb import train_model as train_xgb
 
 
 def main():
     """Run model training based on command line arguments"""
     parser = argparse.ArgumentParser(description='Train models for position estimation')
-    parser.add_argument('--model', type=str, default='both', 
-                        choices=['lstm', 'linear', 'both'],
-                        help='Which model to train (default: both)')
+    parser.add_argument('--model', type=str, default='all', 
+                        choices=['lstm', 'linear', 'svr', 'rf', 'xgb', 'all'],
+                        help='Which model to train (default: all)')
     parser.add_argument('--compare', action='store_true',
-                        help='Compare results of both models')
+                        help='Compare results of all models')
     
     args = parser.parse_args()
     
-    if args.model in ['lstm', 'both']:
+    if args.model in ['lstm', 'all']:
         print("=" * 60)
         print("Training LSTM Model")
         print("=" * 60)
         train_lstm()
         print("\n")
     
-    if args.model in ['linear', 'both']:
+    if args.model in ['linear', 'all']:
         print("=" * 60)
         print("Training Linear Baseline Model")
         print("=" * 60)
         train_linear()
         print("\n")
     
-    if args.compare and args.model == 'both':
+    if args.model in ['svr', 'all']:
+        print("=" * 60)
+        print("Training SVR Model")
+        print("=" * 60)
+        train_svr()
+        print("\n")
+    
+    if args.model in ['rf', 'all']:
+        print("=" * 60)
+        print("Training Random Forest Model")
+        print("=" * 60)
+        train_rf()
+        print("\n")
+    
+    if args.model in ['xgb', 'all']:
+        print("=" * 60)
+        print("Training XGBoost Model")
+        print("=" * 60)
+        train_xgb()
+        print("\n")
+    
+    if args.compare and args.model == 'all':
         print("=" * 60)
         print("Model Comparison Summary")
         print("=" * 60)
@@ -46,24 +70,28 @@ def main():
 
 
 def compare_models():
-    """Compare the performance of LSTM and Linear models"""
+    """Compare the performance of all models"""
     import joblib
     import torch
     from pathlib import Path
     
-    # Check if both models exist
+    # Check if all models exist
     lstm_path = Path('models/saved/lstm_best_model.pth')
     linear_path = Path('models/saved/linear_baseline_model.pkl')
+    svr_path = Path('models/saved/svr_model.pkl')
+    rf_path = Path('models/saved/rf_model.pkl')
+    xgb_path = Path('models/saved/xgb_model.pkl')
     
-    if not lstm_path.exists() or not linear_path.exists():
-        print("Both models need to be trained first for comparison.")
+    if not all([lstm_path.exists(), linear_path.exists(), svr_path.exists(), 
+                rf_path.exists(), xgb_path.exists()]):
+        print("All models need to be trained first for comparison.")
         return
     
     print("\nModel comparison functionality can be extended here.")
-    print("Both models have been trained and saved successfully.")
+    print("All models have been trained and saved successfully.")
     
     # You can add more detailed comparison logic here
-    # For example, loading both models and comparing their validation metrics
+    # For example, loading all models and comparing their validation metrics
 
 
 if __name__ == "__main__":
@@ -73,18 +101,27 @@ if __name__ == "__main__":
         print("-" * 35)
         print("1. Train LSTM model")
         print("2. Train Linear baseline model")
-        print("3. Train both models")
-        print("4. Exit")
+        print("3. Train SVR model")
+        print("4. Train Random Forest model")
+        print("5. Train XGBoost model")
+        print("6. Train all models")
+        print("7. Exit")
         
-        choice = input("\nSelect option (1-4): ")
+        choice = input("\nSelect option (1-7): ")
         
         if choice == '1':
             sys.argv.extend(['--model', 'lstm'])
         elif choice == '2':
             sys.argv.extend(['--model', 'linear'])
         elif choice == '3':
-            sys.argv.extend(['--model', 'both'])
+            sys.argv.extend(['--model', 'svr'])
         elif choice == '4':
+            sys.argv.extend(['--model', 'rf'])
+        elif choice == '5':
+            sys.argv.extend(['--model', 'xgb'])
+        elif choice == '6':
+            sys.argv.extend(['--model', 'all'])
+        elif choice == '7':
             print("Exiting...")
             sys.exit(0)
         else:

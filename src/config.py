@@ -9,6 +9,29 @@ MODEL_CONFIG = {
     'dropout': 0.3,
 }
 
+# SVR Model Configuration
+SVR_CONFIG = {
+    'kernel': 'rbf',  # 'linear', 'poly', 'rbf', 'sigmoid'
+    'C': 1.0,         # Regularization parameter
+    'epsilon': 0.1,   # Epsilon-tube width
+    'gamma': 'scale'  # Kernel coefficient for 'rbf', 'poly' and 'sigmoid'
+}
+
+# Random Forest Configuration
+RF_CONFIG = {
+    'n_estimators': 100,
+    'max_depth': None,
+    'random_state': 42
+}
+
+# XGBoost Configuration
+XGB_CONFIG = {
+    'n_estimators': 100,
+    'max_depth': 6,
+    'learning_rate': 0.1,
+    'random_state': 42
+}
+
 # Training Configuration
 TRAINING_CONFIG = {
     'learning_rate': 0.001,
