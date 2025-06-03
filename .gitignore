@@ -38,7 +38,6 @@ ENV/
 *.csv
 *.log
 logs/
-models/
 data/raw/
 data/processed/
 

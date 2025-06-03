@@ -2,19 +2,19 @@
 Training script for XGBoost model
 """
 
-import numpy as np
-import pandas as pd
-import sys
-from pathlib import Path
+from src.config import TRAINING_CONFIG, XGB_CONFIG
 from sklearn.metrics import mean_squared_error
-import random
-import os
+from src.models.xgb import XGBoostModel
+from pathlib import Path
+import pandas as pd
+import numpy as np
 import joblib
+import random
+import sys
+import os
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
-from src.models.xgb import XGBoostModel
-from src.config import TRAINING_CONFIG, XGB_CONFIG
 
 
 def set_seed(seed=42):
@@ -87,17 +87,14 @@ def train_model():
     print("-" * 40)
     print(f"X coordinate:")
     print(f"  RMSE: {rmse_x:.2f}")
-    print(f"  Mean error: {errors_x.mean():.2f}")
-    print(f"  Std error: {errors_x.std():.2f}")
+    print(f"  Mean: {np.mean(y_val[:, 0] - y_pred[:, 0]):.2f}")
+    print(f"  Std: {errors_x.std():.2f}")
+    
     print(f"\nY coordinate:")
     print(f"  RMSE: {rmse_y:.2f}")
-    print(f"  Mean error: {errors_y.mean():.2f}")
-    print(f"  Std error: {errors_y.std():.2f}")
+    print(f"  Mean: {np.mean(y_val[:, 1] - y_pred[:, 1]):.2f}")
+    print(f"  Std: {errors_y.std():.2f}")
     
     # Combined metric
     rmse_combined = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
     print(f"\nCombined RMSE: {rmse_combined:.2f}")
-
-
-if __name__ == "__main__":
-    train_model() 

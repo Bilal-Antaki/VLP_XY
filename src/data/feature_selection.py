@@ -4,16 +4,16 @@ Selects the best features using Lasso regularization or Random Forest
 Always includes original PL and RMS features
 """
 
-import pandas as pd
-import numpy as np
-from pathlib import Path
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.linear_model import LassoCV
-from sklearn.preprocessing import StandardScaler
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LassoCV
+import matplotlib.pyplot as plt
+from pathlib import Path
+import pandas as pd
+import numpy as np
 import warnings
+
 warnings.filterwarnings('ignore')
 
 

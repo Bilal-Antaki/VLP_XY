@@ -60,12 +60,3 @@ def run_complete_pipeline(selection_method='random_forest'):
     print(f"\nSelected features include mandatory PL and RMS plus top 5 from {selection_method}")
     
     return features_df, selected_features, (X_train, Y_train, X_val, Y_val)
-
-
-if __name__ == "__main__":
-    METHOD = 'random_forest'  # 'lasso' or 'random_forest'
-    
-    # Run the complete pipeline
-    features_df, selected_features, (X_train, Y_train, X_val, Y_val) = run_complete_pipeline(selection_method=METHOD)
-    print(X_train.shape)
-    print(Y_train.shape)

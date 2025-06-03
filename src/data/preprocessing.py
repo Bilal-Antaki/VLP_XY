@@ -3,10 +3,10 @@ Improved preprocessing for trajectory prediction
 Handles sequences properly without data leakage
 """
 
+from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
 import os
-from sklearn.preprocessing import StandardScaler
 
 # Get the absolute path of the script
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

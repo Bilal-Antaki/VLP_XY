@@ -9,7 +9,6 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import sys
-import os
 
 # Add parent directory to path to import loader
 sys.path.append(str(Path(__file__).parent.parent))

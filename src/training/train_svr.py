@@ -2,19 +2,19 @@
 Training script for Support Vector Regression model
 """
 
-import numpy as np
-import pandas as pd
-import sys
-from pathlib import Path
+from src.config import TRAINING_CONFIG, SVR_CONFIG
 from sklearn.metrics import mean_squared_error
+from src.models.svr import SVRModel
+from pathlib import Path
+import pandas as pd
+import numpy as np
 import random
-import os
 import joblib
+import sys
+import os
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
-from src.models.svr import SVRModel
-from src.config import TRAINING_CONFIG, SVR_CONFIG
 
 
 def set_seed(seed=42):
@@ -145,10 +145,12 @@ def train_model():
     print(f"\nTrajectory-level Validation Metrics:")
     print(f"X-coordinate:")
     print(f"  RMSE: {rmse_x_trajs.mean():.2f}")
+    print(f"  Mean: {np.mean(Y_val[:, 0] - val_pred[:, 0]):.2f}")
     print(f"  Std: {rmse_x_trajs.std():.2f}")
     
     print(f"Y-coordinate:")
     print(f"  RMSE: {rmse_y_trajs.mean():.2f}")
+    print(f"  Mean: {np.mean(Y_val[:, 1] - val_pred[:, 1]):.2f}")
     print(f"  Std: {rmse_y_trajs.std():.2f}")
     
     # Combined metric
@@ -217,7 +219,3 @@ def load_and_evaluate():
         print(f"\nMetrics for trajectory {test_traj_id}:")
         print(f"MAE  - X: {mae_x:.2f}, Y: {mae_y:.2f}")
         print(f"RMSE - X: {rmse_x:.2f}, Y: {rmse_y:.2f}")
-
-
-if __name__ == "__main__":
-    train_model() 

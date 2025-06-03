@@ -1,24 +1,27 @@
 """
 Data loader for trajectory prediction project
-Loads the FCPR-D1_CIR.csv file containing x, y, PL, and RMS values
+Loads the xxxx-Dx_CIR.csv file containing x, y, PL, and RMS values
 """
 
+from src.config import DATA_CONFIG
+from pathlib import Path
 import pandas as pd
 import numpy as np
-import os
-from pathlib import Path
 
 
 class TrajectoryDataLoader:
-    def __init__(self, data_path='data/processed/FCPR-D1_CIR.csv'):
+    def __init__(self, data_path=None):
         """
         Initialize the data loader
         
         Parameters:
         -----------
-        data_path : str
-            Relative path to the CSV file
+        data_path : str, optional
+            Relative path to the CSV file. If None, uses the path from DATA_CONFIG
         """
+        # Use config path if none provided, otherwise use the provided path
+        data_path = data_path or DATA_CONFIG['input_file']
+        
         # Convert to relative path and handle different OS path separators
         self.data_path = Path(data_path)
         

@@ -1,13 +1,13 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import numpy as np
-import pandas as pd
-import sys
-from pathlib import Path
-from sklearn.preprocessing import StandardScaler, RobustScaler
+from sklearn.preprocessing import StandardScaler, StandardScaler
 from sklearn.metrics import mean_squared_error
+import torch.optim as optim
+from pathlib import Path
+import torch.nn as nn
+import pandas as pd
+import numpy as np
 import random
+import torch
+import sys
 import os
 
 # Add src to path
@@ -65,9 +65,9 @@ def prepare_data():
     X_val = np.array(X_val)
     Y_val = np.array(Y_val)
     
-    # Use RobustScaler for better handling of outliers
-    scaler_X = RobustScaler()
-    scaler_Y = RobustScaler()
+    # Use StandardScaler for better handling of outliers
+    scaler_X = StandardScaler()
+    scaler_Y = StandardScaler()
     
     # Fit scalers on training data
     X_train_flat = X_train.reshape(-1, X_train.shape[-1])
@@ -223,19 +223,19 @@ def train_model():
         
         # Print detailed results
         print("\nX-coordinate Metrics:")
-        print(f"RMSE: {rmse_x_per_traj.mean():.2f}")
-        print(f"Std: {rmse_x_per_traj.std():.2f}")
-        print(f"Mean: {np.mean(np.abs(Y_val_true[:, :, 0] - val_pred[:, :, 0])):.2f}")
+        print(f"  RMSE: {rmse_x_per_traj.mean():.2f}")
+        print(f"  Std: {rmse_x_per_traj.std():.2f}")
+        print(f"  Mean: {np.mean(Y_val_true[:, :, 0] - val_pred[:, :, 0]):.2f}")
         
         print("\nY-coordinate Metrics:")
-        print(f"RMSE: {rmse_y_per_traj.mean():.2f}")
-        print(f"Std: {rmse_y_per_traj.std():.2f}")
-        print(f"Mean: {np.mean(np.abs(Y_val_true[:, :, 1] - val_pred[:, :, 1])):.2f}")
+        print(f"  RMSE: {rmse_y_per_traj.mean():.2f}")
+        print(f"  Std: {rmse_y_per_traj.std():.2f}")
+        print(f"  Mean: {np.mean(Y_val_true[:, :, 1] - val_pred[:, :, 1]):.2f}")
         
         print("\nOverall Metrics:")
         rmse_total = np.sqrt((rmse_x_per_traj**2 + rmse_y_per_traj**2)/2)
-        print(f"Combined RMSE: {rmse_total.mean():.2f}")
-        print(f"Combined Std: {rmse_total.std():.2f}")
+        print(f"  Combined RMSE: {rmse_total.mean():.2f}")
+        print(f"  Combined Std: {rmse_total.std():.2f}")
         
         # Print sample predictions if needed
         print(f"\nSample true and predicted values (first trajectory):")
@@ -243,7 +243,3 @@ def train_model():
         print(f"X_pred: {val_pred[0, :, 0]}")
         print(f"Y: {Y_val_true[0, :, 1]}")
         print(f"Y_pred: {val_pred[0, :, 1]}")
-
-
-if __name__ == "__main__":
-    train_model()
