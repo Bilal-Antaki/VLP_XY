@@ -3,25 +3,23 @@ Main entry point for the Position Estimation project
 """
 from src.training.train_linear import train_model as train_linear
 from src.training.train_lstm import train_model as train_lstm
-from src.training.train_xgb import train_model as train_xgb
+from src.training.train_gru import train_model as train_gru
 from src.training.train_svr import train_model as train_svr
 from src.training.train_mlp import train_model as train_mlp
 from src.training.train_rf import train_model as train_rf
-from src.training.train_gru import train_model as train_gru
 from main_preproccessing import run_complete_pipeline
-from pathlib import Path
-import sys
-from src.config import TRAINING_CONFIG, MODEL_CONFIG, MLP_CONFIG
-# Add src to path
-sys.path.append(str(Path(__file__).parent / 'src'))
-
+from src.config import TRAINING_CONFIG, MLP_CONFIG
+from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import joblib
 import torch
-from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import StandardScaler
+import sys
+
+# Add src to path
+sys.path.append(str(Path(__file__).parent / 'src'))
 
 
 def load_model_predictions():
@@ -89,19 +87,6 @@ def load_model_predictions():
         print(f"Random Forest model loaded - RMSE: {rmse_scores['Random Forest']:.2f}")
     except Exception as e:
         print(f"Failed to load Random Forest model: {e}")
-    
-    # Load XGBoost model
-    try:
-        xgb_data = joblib.load('results/models/xgb_model.pkl')
-        models['XGBoost'] = xgb_data['model']
-        pred = models['XGBoost'].predict(X_val)
-        predictions['XGBoost'] = pred
-        rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
-        rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], pred[:, 1]))
-        rmse_scores['XGBoost'] = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
-        print(f"XGBoost model loaded - RMSE: {rmse_scores['XGBoost']:.2f}")
-    except Exception as e:
-        print(f"Failed to load XGBoost model: {e}")
     
     # Load MLP model
     try:
@@ -186,6 +171,10 @@ def load_model_predictions():
         rnn_data = torch.load('results/models/rnn_model.pkl', weights_only=False)
         from src.models.rnn import RNNModel, RNNNetwork
         model_config = rnn_data['model_config']
+        
+        # Update input size to match current data
+        input_size = X_val.shape[1]  # Get current feature count
+        
         rnn_model = RNNModel(
             hidden_dim=model_config['hidden_dim'],
             num_layers=model_config['num_layers'],
@@ -193,15 +182,34 @@ def load_model_predictions():
             learning_rate=TRAINING_CONFIG['learning_rate'],
             epochs=TRAINING_CONFIG['epochs']
         )
-        # Initialize the model with dummy data to create the network
-        input_size = X_val.shape[1]
-        rnn_model.model = RNNNetwork(input_size, model_config['hidden_dim'], model_config['num_layers'], model_config['dropout'])
+        
+        # Initialize the model with the correct input size
+        rnn_model.model = RNNNetwork(
+            input_size=input_size,  # Use current feature count
+            hidden_dim=model_config['hidden_dim'],
+            num_layers=model_config['num_layers'],
+            dropout=model_config['dropout']
+        )
+        
+        # Load only the compatible parts of the state dict
+        state_dict = rnn_data['model_state_dict']
+        model_state_dict = rnn_model.model.state_dict()
+        
+        # Filter out incompatible layers
+        filtered_state_dict = {k: v for k, v in state_dict.items() 
+                             if k in model_state_dict and v.shape == model_state_dict[k].shape}
+        
+        # Update state dict with filtered weights
+        model_state_dict.update(filtered_state_dict)
+        rnn_model.model.load_state_dict(model_state_dict)
+        
         rnn_model.model = rnn_model.model.to(rnn_model.device)
-        rnn_model.model.load_state_dict(rnn_data['model_state_dict'])
         rnn_model.scaler_features = rnn_data['scaler_features']
         rnn_model.scaler_targets = rnn_data['scaler_targets']
         rnn_model.is_fitted = True
         models['RNN'] = rnn_model
+        
+        # Make predictions
         pred = models['RNN'].predict(X_val)
         predictions['RNN'] = pred
         rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
@@ -210,6 +218,7 @@ def load_model_predictions():
         print(f"RNN model loaded - RMSE: {rmse_scores['RNN']:.2f}")
     except Exception as e:
         print(f"Failed to load RNN model: {e}")
+        print("Consider retraining the RNN model with the current feature set.")
     
     # Load GRU model
     try:
@@ -277,7 +286,7 @@ def create_model_comparison_plot(rmse_scores):
 
 
 def create_individual_model_plots(predictions, Y_val, val_trajectories, df):
-    """Create 4-figure plots for each model: X pred vs actual, Y pred vs actual, first traj, second traj"""
+    """Create plots for each model: X pred vs actual, Y pred vs actual"""
     
     # Define a consistent color scheme for all plots
     color_scheme = {
@@ -285,24 +294,14 @@ def create_individual_model_plots(predictions, Y_val, val_trajectories, df):
             'X': 'blue',
             'Y': 'red'
         },
-        'trajectory': {
-            'true': {
-                'first': 'blue',
-                'second': 'green'
-            },
-            'pred': {
-                'first': 'orange',
-                'second': 'purple'
-            }
-        },
         'perfect_line': 'r--'
     }
     
     for model_name, pred in predictions.items():
         print(f"Creating plots for {model_name}...")
         
-        # Create figure with 2x2 subplots
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
+        # Create figure with 1x2 subplots
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
         
         # Figure 1: X coordinate predicted vs actual
         ax1.scatter(Y_val[:, 0], pred[:, 0], alpha=0.6, s=30, color=color_scheme['scatter']['X'])
@@ -335,74 +334,6 @@ def create_individual_model_plots(predictions, Y_val, val_trajectories, df):
         ax2.set_ylabel('Predicted Y', fontsize=11)
         ax2.grid(True, alpha=0.3)
         ax2.legend()
-        
-        # Figure 3: First validation trajectory (trajectory 16)
-        if len(val_trajectories) >= 1:
-            traj = val_trajectories[0]
-            true_path = traj['Y']
-            start_idx = 0 * 10
-            end_idx = start_idx + 10
-            pred_path = pred[start_idx:end_idx]
-            
-            # Plot true trajectory
-            ax3.plot(true_path[:, 0], true_path[:, 1], 'o-', 
-                    label=f'True Traj {traj["id"]}', 
-                    color=color_scheme['trajectory']['true']['first'], 
-                    alpha=0.8, linewidth=2, markersize=6)
-            # Plot predicted trajectory
-            ax3.plot(pred_path[:, 0], pred_path[:, 1], 's--', 
-                    label=f'Pred Traj {traj["id"]}', 
-                    color=color_scheme['trajectory']['pred']['first'], 
-                    alpha=0.8, linewidth=2, markersize=6)
-            
-            # Mark starting points with large red stars
-            ax3.scatter(true_path[0, 0], true_path[0, 1], 
-                       s=150, c='red', marker='*', zorder=5, 
-                       label='Start Point', edgecolors='black')
-            ax3.scatter(pred_path[0, 0], pred_path[0, 1], 
-                       s=150, c='darkred', marker='*', zorder=5, 
-                       edgecolors='black')
-        
-        ax3.set_title(f'{model_name} - First Validation Trajectory', 
-                     fontweight='bold', fontsize=12)
-        ax3.set_xlabel('X Position', fontsize=11)
-        ax3.set_ylabel('Y Position', fontsize=11)
-        ax3.legend(fontsize=10)
-        ax3.grid(True, alpha=0.3)
-        
-        # Figure 4: Second validation trajectory (trajectory 17)
-        if len(val_trajectories) >= 2:
-            traj = val_trajectories[1]
-            true_path = traj['Y']
-            start_idx = 1 * 10
-            end_idx = start_idx + 10
-            pred_path = pred[start_idx:end_idx]
-            
-            # Plot true trajectory
-            ax4.plot(true_path[:, 0], true_path[:, 1], 'o-', 
-                    label=f'True Traj {traj["id"]}', 
-                    color=color_scheme['trajectory']['true']['second'], 
-                    alpha=0.8, linewidth=2, markersize=6)
-            # Plot predicted trajectory
-            ax4.plot(pred_path[:, 0], pred_path[:, 1], 's--', 
-                    label=f'Pred Traj {traj["id"]}', 
-                    color=color_scheme['trajectory']['pred']['second'], 
-                    alpha=0.8, linewidth=2, markersize=6)
-            
-            # Mark starting points with large red stars
-            ax4.scatter(true_path[0, 0], true_path[0, 1], 
-                       s=150, c='red', marker='*', zorder=5, 
-                       label='Start Point', edgecolors='black')
-            ax4.scatter(pred_path[0, 0], pred_path[0, 1], 
-                       s=150, c='darkred', marker='*', zorder=5, 
-                       edgecolors='black')
-        
-        ax4.set_title(f'{model_name} - Second Validation Trajectory', 
-                     fontweight='bold', fontsize=12)
-        ax4.set_xlabel('X Position', fontsize=11)
-        ax4.set_ylabel('Y Position', fontsize=11)
-        ax4.legend(fontsize=10)
-        ax4.grid(True, alpha=0.3)
         
         plt.tight_layout()
         
@@ -486,12 +417,6 @@ def main():
     print("\n")
     
     print("=" * 60)
-    print("Training XGBoost Model")
-    print("=" * 60)
-    train_xgb()
-    print("\n")
-    
-    print("=" * 60)
     print("Training MLP (Multi-Layer Perceptron) Model")
     print("=" * 60)
     train_mlp()
@@ -512,12 +437,10 @@ def compare_models():
     linear_path = Path('results/models/linear_baseline_model.pkl')
     svr_path = Path('results/models/svr_model.pkl')
     rf_path = Path('results/models/rf_model.pkl')
-    xgb_path = Path('results/models/xgb_model.pkl')
     mlp_path = Path('results/models/mlp_model.pkl')
     
     if not all([lstm_path.exists(), gru_path.exists(), linear_path.exists(), 
-                svr_path.exists(), rf_path.exists(), xgb_path.exists(), 
-                mlp_path.exists()]):
+                svr_path.exists(), rf_path.exists(), mlp_path.exists()]):
         print("All models need to be trained first for comparison.")
         return
     
@@ -527,11 +450,15 @@ def compare_models():
 
 
 if __name__ == "__main__":
-    METHOD = 'random_forest'  # 'lasso' or 'random_forest'
-    
     # Run the complete pipeline
-    features_df, selected_features, (X_train, Y_train, X_val, Y_val) = run_complete_pipeline(selection_method=METHOD)
+    features_df, selected_features, (X_train, Y_train, X_val, Y_val) = run_complete_pipeline()
     print(X_train.shape)
     print(Y_train.shape)
 
     main()
+
+
+
+# TODO:
+# - Randomly select 4 trajectories for validation set
+# - improve feature selection method by either considering correlation analysis to drop strongly correlated features or use PCA

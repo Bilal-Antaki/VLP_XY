@@ -194,38 +194,8 @@ def load_and_evaluate():
     df = pd.read_csv('data/features/features_selected.csv')
     feature_cols = [col for col in df.columns 
                    if col not in ['X', 'Y', 'trajectory_id', 'step_id']]
-    
-    # Test on a specific trajectory
-    test_traj_id = 19
-    test_data = df[df['trajectory_id'] == test_traj_id].sort_values('step_id')
-    
-    if len(test_data) == 10:
-        X_test = test_data[feature_cols].values.reshape(1, 10, -1)  # (1, 10, features)
-        Y_test = test_data[['X', 'Y']].values
         
-        # Predict trajectory
-        predictions = model.predict_trajectories(X_test)
-        pred_traj = predictions[0]  # Get the single trajectory prediction
         
-        print(f"\nPredictions for trajectory {test_traj_id}:")
-        print("Step | True X | Pred X | True Y | Pred Y | Error X | Error Y")
-        print("-" * 70)
-        for i in range(len(pred_traj)):
-            error_x = abs(Y_test[i, 0] - pred_traj[i, 0])
-            error_y = abs(Y_test[i, 1] - pred_traj[i, 1])
-            print(f"{i+1:4d} | {Y_test[i, 0]:6.0f} | {pred_traj[i, 0]:6.0f} | "
-                  f"{Y_test[i, 1]:6.0f} | {pred_traj[i, 1]:6.0f} | "
-                  f"{error_x:7.1f} | {error_y:7.1f}")
-        
-        # Overall metrics
-        mae_x = np.mean(np.abs(Y_test[:, 0] - pred_traj[:, 0]))
-        mae_y = np.mean(np.abs(Y_test[:, 1] - pred_traj[:, 1]))
-        rmse_x = np.sqrt(mean_squared_error(Y_test[:, 0], pred_traj[:, 0]))
-        rmse_y = np.sqrt(mean_squared_error(Y_test[:, 1], pred_traj[:, 1]))
-        
-        print(f"\nMetrics for trajectory {test_traj_id}:")
-        print(f"MAE  - X: {mae_x:.2f}, Y: {mae_y:.2f}")
-        print(f"RMSE - X: {rmse_x:.2f}, Y: {rmse_y:.2f}")
 
 
 if __name__ == "__main__":

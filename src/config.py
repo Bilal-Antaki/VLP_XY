@@ -24,20 +24,12 @@ RF_CONFIG = {
     'random_state': 42
 }
 
-# XGBoost Configuration
-XGB_CONFIG = {
-    'n_estimators': 100,
-    'max_depth': 6,
-    'learning_rate': 0.1,
-    'random_state': 42
-}
-
 # MLP Configuration
 MLP_CONFIG = {
     'hidden_sizes': [128, 64, 32],  # Architecture: input -> 128 -> 64 -> 32 -> output
     'dropout': 0.3,
     'learning_rate': 0.001,
-    'epochs': 250
+    'epochs': 400
 }
 
 # Training Configuration

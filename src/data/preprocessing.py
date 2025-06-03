@@ -240,3 +240,53 @@ def normalize_by_trajectory(X_train, Y_train, X_val, Y_val):
         Y_val_scaled = target_scaler.transform(Y_val)
     
     return (X_train_scaled, Y_train_scaled, X_val_scaled, Y_val_scaled), (feature_scaler, target_scaler)
+
+
+def prepare_training_data(features_df, selected_features):
+    """
+    Prepare data for training using selected features
+    
+    Parameters
+    ----------
+    features_df : pd.DataFrame
+        DataFrame containing all features
+    selected_features : list
+        List of selected feature names
+        
+    Returns
+    -------
+    tuple
+        (X_train, Y_train, X_val, Y_val)
+    """
+    # Get feature columns (excluding target and ID columns)
+    feature_cols = [col for col in features_df.columns 
+                   if col not in ['X', 'Y', 'trajectory_id', 'step_id']]
+    
+    # Ensure all selected features exist in the data
+    missing_features = [f for f in selected_features if f not in feature_cols]
+    if missing_features:
+        raise ValueError(f"Selected features not found in data: {missing_features}")
+    
+    # Prepare data
+    X = features_df[selected_features].values
+    Y = features_df[['X', 'Y']].values
+    
+    # Split into training and validation sets
+    # Use trajectory_id for splitting to keep trajectories together
+    train_trajectories = features_df['trajectory_id'].unique()[:16]  # First 16 trajectories for training
+    val_trajectories = features_df['trajectory_id'].unique()[16:]    # Last 4 trajectories for validation
+    
+    # Split data
+    train_mask = features_df['trajectory_id'].isin(train_trajectories)
+    val_mask = features_df['trajectory_id'].isin(val_trajectories)
+    
+    X_train = X[train_mask]
+    Y_train = Y[train_mask]
+    X_val = X[val_mask]
+    Y_val = Y[val_mask]
+    
+    print(f"\nData split:")
+    print(f"Training set: {X_train.shape[0]} samples from {len(train_trajectories)} trajectories")
+    print(f"Validation set: {X_val.shape[0]} samples from {len(val_trajectories)} trajectories")
+    
+    return X_train, Y_train, X_val, Y_val

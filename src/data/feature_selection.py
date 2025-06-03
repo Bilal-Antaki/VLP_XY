@@ -1,6 +1,6 @@
 """
 Feature selection for trajectory prediction
-Selects the best features using Lasso regularization or Random Forest
+Selects the best features using Lasso regularization
 Always includes original PL and RMS features
 """
 
@@ -13,12 +13,13 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import warnings
+import seaborn as sns
 
 warnings.filterwarnings('ignore')
 
 
 class FeatureSelector:
-    def __init__(self, target_cols=['X', 'Y'], n_features=7, method='lasso'):
+    def __init__(self, target_cols=['X', 'Y'], n_features=7):
         """
         Initialize the feature selector
         
@@ -28,13 +29,10 @@ class FeatureSelector:
             List of target column names
         n_features : int
             Total number of features to select (including PL and RMS)
-        method : str
-            Selection method - 'lasso' or 'random_forest'
         """
         self.target_cols = target_cols
         self.n_features = n_features
-        self.method = method
-        self.selected_features = []
+        self.selected_features = None
         self.feature_scores = {}
         self.scaler = StandardScaler()
         # Always include these base features
@@ -123,45 +121,38 @@ class FeatureSelector:
         # Scale features
         X_scaled = self.scaler.fit_transform(X)
         
-        # For multi-output, we'll use Lasso on each target and combine results
-        feature_importance = np.zeros(len(feature_names))
+        # Dictionary to store feature importance scores
+        feature_score_dict = {}
         
+        # For multi-output, we'll use Lasso on each target and combine results
         for i, target in enumerate(self.target_cols):
-            print(f"\nAnalyzing features for {target}...")
-            
             # Lasso with cross-validation
             lasso = LassoCV(cv=5, random_state=42, max_iter=5000, n_alphas=100)
             lasso.fit(X_scaled, y[:, i])
             
-            # Get feature importances (absolute coefficients)
+            # Get feature importance scores
             importance = np.abs(lasso.coef_)
-            feature_importance += importance
             
+            # Print alpha value
             print(f"Lasso alpha for {target}: {lasso.alpha_:.6f}")
-            print(f"Number of non-zero coefficients: {np.sum(importance > 0)}")
+            
+            # Store scores for each feature
+            for feat, imp in zip(feature_names, importance):
+                if feat not in feature_score_dict:
+                    feature_score_dict[feat] = 0
+                feature_score_dict[feat] += imp
         
-        # Average importance across targets
-        feature_importance /= len(self.target_cols)
+        # Average scores across targets
+        for feat in feature_score_dict:
+            feature_score_dict[feat] /= len(self.target_cols)
         
-        # Create a dict of feature scores
-        feature_score_dict = dict(zip(feature_names, feature_importance))
+        # Sort features by importance
+        sorted_features = sorted(feature_score_dict.items(), 
+                               key=lambda x: x[1], 
+                               reverse=True)
         
-        # Get top features (excluding mandatory ones first)
-        non_mandatory_features = [f for f in feature_names if f not in self.mandatory_features]
-        non_mandatory_scores = [(f, feature_score_dict[f]) for f in non_mandatory_features]
-        non_mandatory_scores.sort(key=lambda x: x[1], reverse=True)
-        
-        # Select top features after mandatory ones
-        n_additional = self.n_features - len(self.mandatory_features)
-        selected_additional = [f for f, score in non_mandatory_scores[:n_additional]]
-        
-        # Combine mandatory and selected features
-        selected_features = self.mandatory_features + selected_additional
-        
-        # Print all selected features with scores
-        print(f"\nSelected {len(selected_features)} features:")
-        for feat in selected_features:
-            print(f"  {feat}: {feature_score_dict[feat]:.4f}")
+        # Get top features
+        selected_features = [f[0] for f in sorted_features[:self.n_features]]
         
         # Store scores
         self.feature_scores['lasso'] = feature_score_dict
@@ -246,7 +237,7 @@ class FeatureSelector:
             return
         
         # Get the scores for the method used
-        method_scores = self.feature_scores[self.method]
+        method_scores = self.feature_scores['lasso']
         
         # Get scores for selected features
         selected_scores = [(feat, method_scores.get(feat, 0)) for feat in selected_features]
@@ -270,7 +261,7 @@ class FeatureSelector:
         
         plt.xlabel('Features', fontsize=12)
         plt.ylabel('Importance Score', fontsize=12)
-        plt.title(f'{self.method.title()} Feature Importance - Top {self.n_features} Features', fontsize=14)
+        plt.title(f'Lasso Feature Importance - Top {self.n_features} Features', fontsize=14)
         plt.xticks(positions, features, rotation=45, ha='right')
         
         # Add legend
@@ -286,20 +277,23 @@ class FeatureSelector:
         plt.close()
         print("\nFeature importance plot saved to: data/features/feature_importance.png")
     
-    def select_features(self):
+    def select_features(self, X, y, feature_names):
         """
         Main method to perform feature selection
         
+        Parameters:
+        -----------
+        X : np.array
+            Feature matrix
+        y : np.array
+            Target matrix
+        feature_names : list
+            List of feature names
+            
         Returns:
         --------
         list : Selected feature names
         """
-        # Load features
-        df = self.load_features()
-        
-        # Prepare data
-        X, y, feature_names = self.prepare_data(df)
-        
         # Ensure mandatory features exist in the data
         missing_mandatory = [f for f in self.mandatory_features if f not in feature_names]
         if missing_mandatory:
@@ -307,12 +301,7 @@ class FeatureSelector:
             self.mandatory_features = [f for f in self.mandatory_features if f in feature_names]
         
         # Apply selected method
-        if self.method == 'lasso':
-            selected_features = self.lasso_selection(X, y, feature_names)
-        elif self.method == 'random_forest':
-            selected_features = self.random_forest_selection(X, y, feature_names)
-        else:
-            raise ValueError(f"Unknown method: {self.method}. Use 'lasso' or 'random_forest'")
+        selected_features = self.lasso_selection(X, y, feature_names)
         
         self.selected_features = selected_features
         
@@ -320,49 +309,120 @@ class FeatureSelector:
         self.visualize_feature_importance(selected_features)
         
         # Save selected features
-        self.save_selected_features(df, selected_features)
+        self.save_selected_features(X, y, feature_names)
         
         return selected_features
     
-    def save_selected_features(self, df, selected_features):
+    def save_selected_features(self, X, y, feature_names):
         """
         Save dataset with only selected features
         
         Parameters:
         -----------
-        df : pd.DataFrame
-            Original DataFrame with all features
-        selected_features : list
-            List of selected feature names
+        X : np.array
+            Feature matrix
+        y : np.array
+            Target matrix
+        feature_names : list
+            List of feature names
         """
-        # Include targets and metadata in the output
-        output_cols = self.target_cols + ['trajectory_id', 'step_id'] + selected_features
+        # Create DataFrame with features
+        feature_df = pd.DataFrame(X, columns=feature_names)
         
-        # Ensure all columns exist
-        output_cols = [col for col in output_cols if col in df.columns]
+        # Add target columns
+        feature_df['X'] = y[:, 0]
+        feature_df['Y'] = y[:, 1]
         
-        # Create output DataFrame
-        output_df = df[output_cols].copy()
-        for col in selected_features:
-            if col in output_df.columns:
-                output_df[col] = output_df[col].round(2)
+        # Add trajectory and step IDs
+        feature_df['trajectory_id'] = np.repeat(np.arange(len(X)//10), 10)
+        feature_df['step_id'] = np.tile(np.arange(10), len(X)//10)
+        
+        # Round feature values
+        for col in feature_names:
+            feature_df[col] = feature_df[col].round(2)
         
         # Save to CSV
         output_path = Path('data/features/features_selected.csv')
-        output_df.to_csv(output_path, index=False)
+        feature_df.to_csv(output_path, index=False)
         
         print(f"\n--- Feature Selection Complete ---")
-        print(f"Selected {len(selected_features)} features")
+        print(f"Selected {len(self.selected_features)} features")
         print(f"Saved to: {output_path}")
-        print(f"Output shape: {output_df.shape}")
+        print(f"Output shape: {feature_df.shape}")
         
         # Print selected features
         print(f"\nSelected features:")
-        for i, feature in enumerate(selected_features, 1):
+        for i, feature in enumerate(self.selected_features, 1):
             print(f"{i:2d}. {feature}")
+    
+    def plot_feature_importance(self, save_path=None):
+        """
+        Plot feature importance scores
+        
+        Parameters:
+        -----------
+        save_path : str, optional
+            Path to save the plot
+        """
+        if not self.feature_scores:
+            print("No feature scores available. Run select_features first.")
+            return
+        
+        plt.figure(figsize=(12, 6))
+        
+        # Get scores for the method
+        scores = self.feature_scores['lasso']
+        
+        # Sort features by importance
+        sorted_features = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        features = [f[0] for f in sorted_features]
+        importance = [f[1] for f in sorted_features]
+        
+        # Create bar plot
+        plt.bar(range(len(features)), importance)
+        plt.xticks(range(len(features)), features, rotation=45, ha='right')
+        plt.title('Feature Importance Scores (Lasso)')
+        plt.xlabel('Features')
+        plt.ylabel('Importance Score')
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path)
+        plt.close()
+    
+    def plot_feature_correlation(self, X, feature_names, save_path=None):
+        """
+        Plot feature correlation matrix
+        
+        Parameters:
+        -----------
+        X : np.array
+            Feature matrix
+        feature_names : list
+            List of feature names
+        save_path : str, optional
+            Path to save the plot
+        """
+        # Calculate correlation matrix
+        corr_matrix = pd.DataFrame(X, columns=feature_names).corr()
+        
+        # Create heatmap
+        plt.figure(figsize=(12, 10))
+        sns.heatmap(corr_matrix, 
+                   annot=True, 
+                   cmap='coolwarm', 
+                   center=0,
+                   fmt='.2f',
+                   square=True)
+        plt.title('Feature Correlation Matrix')
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path)
+        plt.close()
 
 
-def main(method='random_forest'):
+def main(method='lasso'):
     """
     Main function to perform feature selection
     
@@ -372,9 +432,21 @@ def main(method='random_forest'):
         Feature selection method - 'lasso' or 'random_forest'
     """
     # Initialize selector with 7 features total (including PL and RMS)
-    selector = FeatureSelector(target_cols=['X', 'Y'], n_features=7, method=method)
+    selector = FeatureSelector(target_cols=['X', 'Y'], n_features=7)
     
-    # Perform feature selection
-    selected_features = selector.select_features()
+    # Load features
+    df = selector.load_features()
+    
+    # Prepare data
+    X, y, feature_names = selector.prepare_data(df)
+    
+    # Select features
+    selected_features = selector.select_features(X, y, feature_names)
     
     return selected_features
+
+
+if __name__ == "__main__":
+    # Run feature selection
+    selected_features = main()
+    print("\nSelected features:", selected_features)
