@@ -7,10 +7,11 @@ from src.training.train_xgb import train_model as train_xgb
 from src.training.train_svr import train_model as train_svr
 from src.training.train_mlp import train_model as train_mlp
 from src.training.train_rf import train_model as train_rf
+from src.training.train_gru import train_model as train_gru
 from main_preproccessing import run_complete_pipeline
 from pathlib import Path
 import sys
-
+from src.config import TRAINING_CONFIG, MODEL_CONFIG, MLP_CONFIG
 # Add src to path
 sys.path.append(str(Path(__file__).parent / 'src'))
 
@@ -105,15 +106,22 @@ def load_model_predictions():
     # Load MLP model
     try:
         mlp_data = torch.load('results/models/mlp_model.pkl', weights_only=False)
-        from src.models.mlp import MLPModel
+        from src.models.mlp import MLPModel, MLPNetwork
         model_config = mlp_data['model_config']
         mlp_model = MLPModel(
             hidden_sizes=model_config['hidden_sizes'],
-            dropout=model_config['dropout']
+            dropout=model_config['dropout'],
+            learning_rate=MLP_CONFIG['learning_rate'],
+            epochs=MLP_CONFIG['epochs']
         )
+        # Initialize the model with dummy data to create the network
+        input_size = X_val.shape[1]
+        mlp_model.model = MLPNetwork(input_size, model_config['hidden_sizes'], output_size=2, dropout=model_config['dropout'])
+        mlp_model.model = mlp_model.model.to(mlp_model.device)
         mlp_model.model.load_state_dict(mlp_data['model_state_dict'])
         mlp_model.scaler_features = mlp_data['scaler_features']
         mlp_model.scaler_targets = mlp_data['scaler_targets']
+        mlp_model.is_fitted = True
         models['MLP'] = mlp_model
         pred = models['MLP'].predict(X_val)
         predictions['MLP'] = pred
@@ -173,16 +181,80 @@ def load_model_predictions():
     except Exception as e:
         print(f"Failed to load LSTM model: {e}")
     
+    # Load RNN model
+    try:
+        rnn_data = torch.load('results/models/rnn_model.pkl', weights_only=False)
+        from src.models.rnn import RNNModel, RNNNetwork
+        model_config = rnn_data['model_config']
+        rnn_model = RNNModel(
+            hidden_dim=model_config['hidden_dim'],
+            num_layers=model_config['num_layers'],
+            dropout=model_config['dropout'],
+            learning_rate=TRAINING_CONFIG['learning_rate'],
+            epochs=TRAINING_CONFIG['epochs']
+        )
+        # Initialize the model with dummy data to create the network
+        input_size = X_val.shape[1]
+        rnn_model.model = RNNNetwork(input_size, model_config['hidden_dim'], model_config['num_layers'], model_config['dropout'])
+        rnn_model.model = rnn_model.model.to(rnn_model.device)
+        rnn_model.model.load_state_dict(rnn_data['model_state_dict'])
+        rnn_model.scaler_features = rnn_data['scaler_features']
+        rnn_model.scaler_targets = rnn_data['scaler_targets']
+        rnn_model.is_fitted = True
+        models['RNN'] = rnn_model
+        pred = models['RNN'].predict(X_val)
+        predictions['RNN'] = pred
+        rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
+        rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], pred[:, 1]))
+        rmse_scores['RNN'] = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
+        print(f"RNN model loaded - RMSE: {rmse_scores['RNN']:.2f}")
+    except Exception as e:
+        print(f"Failed to load RNN model: {e}")
+    
+    # Load GRU model
+    try:
+        gru_data = torch.load('results/models/gru_model.pkl', weights_only=False)
+        from src.models.gru import GRUModel, GRUNetwork
+        model_config = gru_data['model_config']
+        gru_model = GRUModel(
+            hidden_dim=model_config['hidden_dim'],
+            num_layers=model_config['num_layers'],
+            dropout=model_config['dropout'],
+            learning_rate=TRAINING_CONFIG['learning_rate'],
+            epochs=TRAINING_CONFIG['epochs']
+        )
+        # Initialize the model with dummy data to create the network
+        input_size = X_val.shape[1]
+        gru_model.model = GRUNetwork(input_size, model_config['hidden_dim'], model_config['num_layers'], model_config['dropout'])
+        gru_model.model = gru_model.model.to(gru_model.device)
+        gru_model.model.load_state_dict(gru_data['model_state_dict'])
+        gru_model.scaler_features = gru_data['scaler_features']
+        gru_model.scaler_targets = gru_data['scaler_targets']
+        gru_model.is_fitted = True
+        models['GRU'] = gru_model
+        pred = models['GRU'].predict(X_val)
+        predictions['GRU'] = pred
+        rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
+        rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], pred[:, 1]))
+        rmse_scores['GRU'] = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
+        print(f"GRU model loaded - RMSE: {rmse_scores['GRU']:.2f}")
+    except Exception as e:
+        print(f"Failed to load GRU model: {e}")
+    
     return predictions, rmse_scores, Y_val, val_trajectories, df
 
 
 def create_model_comparison_plot(rmse_scores):
     """Create model RMSE comparison plot"""
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(12, 6))
     
-    models = list(rmse_scores.keys())
-    scores = list(rmse_scores.values())
-    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+    # Sort models by RMSE score for better visualization
+    sorted_models = sorted(rmse_scores.items(), key=lambda x: x[1])
+    models = [m[0] for m in sorted_models]
+    scores = [m[1] for m in sorted_models]
+    
+    # Use a color palette that's colorblind-friendly
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2']
     
     bars = plt.bar(models, scores, color=colors[:len(models)])
     
@@ -194,6 +266,7 @@ def create_model_comparison_plot(rmse_scores):
     plt.title('Model Performance Comparison - Combined RMSE', fontsize=14, fontweight='bold')
     plt.xlabel('Models', fontsize=12)
     plt.ylabel('RMSE', fontsize=12)
+    plt.xticks(rotation=45, ha='right')
     plt.grid(axis='y', alpha=0.3)
     plt.tight_layout()
     
@@ -206,6 +279,25 @@ def create_model_comparison_plot(rmse_scores):
 def create_individual_model_plots(predictions, Y_val, val_trajectories, df):
     """Create 4-figure plots for each model: X pred vs actual, Y pred vs actual, first traj, second traj"""
     
+    # Define a consistent color scheme for all plots
+    color_scheme = {
+        'scatter': {
+            'X': 'blue',
+            'Y': 'red'
+        },
+        'trajectory': {
+            'true': {
+                'first': 'blue',
+                'second': 'green'
+            },
+            'pred': {
+                'first': 'orange',
+                'second': 'purple'
+            }
+        },
+        'perfect_line': 'r--'
+    }
+    
     for model_name, pred in predictions.items():
         print(f"Creating plots for {model_name}...")
         
@@ -213,28 +305,32 @@ def create_individual_model_plots(predictions, Y_val, val_trajectories, df):
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
         
         # Figure 1: X coordinate predicted vs actual
-        ax1.scatter(Y_val[:, 0], pred[:, 0], alpha=0.6, s=30, color='blue')
+        ax1.scatter(Y_val[:, 0], pred[:, 0], alpha=0.6, s=30, color=color_scheme['scatter']['X'])
         
         # Perfect prediction line
         min_x = min(Y_val[:, 0].min(), pred[:, 0].min())
         max_x = max(Y_val[:, 0].max(), pred[:, 0].max())
-        ax1.plot([min_x, max_x], [min_x, max_x], 'r--', alpha=0.8, linewidth=2, label='Perfect Prediction')
+        ax1.plot([min_x, max_x], [min_x, max_x], color_scheme['perfect_line'], 
+                alpha=0.8, linewidth=2, label='Perfect Prediction')
         
-        ax1.set_title(f'{model_name} - X Coordinate: Predicted vs Actual', fontweight='bold', fontsize=12)
+        ax1.set_title(f'{model_name} - X Coordinate: Predicted vs Actual', 
+                     fontweight='bold', fontsize=12)
         ax1.set_xlabel('Actual X', fontsize=11)
         ax1.set_ylabel('Predicted X', fontsize=11)
         ax1.grid(True, alpha=0.3)
         ax1.legend()
         
         # Figure 2: Y coordinate predicted vs actual
-        ax2.scatter(Y_val[:, 1], pred[:, 1], alpha=0.6, s=30, color='red')
+        ax2.scatter(Y_val[:, 1], pred[:, 1], alpha=0.6, s=30, color=color_scheme['scatter']['Y'])
         
         # Perfect prediction line
         min_y = min(Y_val[:, 1].min(), pred[:, 1].min())
         max_y = max(Y_val[:, 1].max(), pred[:, 1].max())
-        ax2.plot([min_y, max_y], [min_y, max_y], 'r--', alpha=0.8, linewidth=2, label='Perfect Prediction')
+        ax2.plot([min_y, max_y], [min_y, max_y], color_scheme['perfect_line'], 
+                alpha=0.8, linewidth=2, label='Perfect Prediction')
         
-        ax2.set_title(f'{model_name} - Y Coordinate: Predicted vs Actual', fontweight='bold', fontsize=12)
+        ax2.set_title(f'{model_name} - Y Coordinate: Predicted vs Actual', 
+                     fontweight='bold', fontsize=12)
         ax2.set_xlabel('Actual Y', fontsize=11)
         ax2.set_ylabel('Predicted Y', fontsize=11)
         ax2.grid(True, alpha=0.3)
@@ -250,18 +346,25 @@ def create_individual_model_plots(predictions, Y_val, val_trajectories, df):
             
             # Plot true trajectory
             ax3.plot(true_path[:, 0], true_path[:, 1], 'o-', 
-                    label=f'True Traj {traj["id"]}', color='blue', alpha=0.8, linewidth=2, markersize=6)
+                    label=f'True Traj {traj["id"]}', 
+                    color=color_scheme['trajectory']['true']['first'], 
+                    alpha=0.8, linewidth=2, markersize=6)
             # Plot predicted trajectory
             ax3.plot(pred_path[:, 0], pred_path[:, 1], 's--', 
-                    label=f'Pred Traj {traj["id"]}', color='orange', alpha=0.8, linewidth=2, markersize=6)
+                    label=f'Pred Traj {traj["id"]}', 
+                    color=color_scheme['trajectory']['pred']['first'], 
+                    alpha=0.8, linewidth=2, markersize=6)
             
             # Mark starting points with large red stars
             ax3.scatter(true_path[0, 0], true_path[0, 1], 
-                       s=150, c='red', marker='*', zorder=5, label='Start Point', edgecolors='black')
+                       s=150, c='red', marker='*', zorder=5, 
+                       label='Start Point', edgecolors='black')
             ax3.scatter(pred_path[0, 0], pred_path[0, 1], 
-                       s=150, c='darkred', marker='*', zorder=5, edgecolors='black')
+                       s=150, c='darkred', marker='*', zorder=5, 
+                       edgecolors='black')
         
-        ax3.set_title(f'{model_name} - First Validation Trajectory', fontweight='bold', fontsize=12)
+        ax3.set_title(f'{model_name} - First Validation Trajectory', 
+                     fontweight='bold', fontsize=12)
         ax3.set_xlabel('X Position', fontsize=11)
         ax3.set_ylabel('Y Position', fontsize=11)
         ax3.legend(fontsize=10)
@@ -277,18 +380,25 @@ def create_individual_model_plots(predictions, Y_val, val_trajectories, df):
             
             # Plot true trajectory
             ax4.plot(true_path[:, 0], true_path[:, 1], 'o-', 
-                    label=f'True Traj {traj["id"]}', color='green', alpha=0.8, linewidth=2, markersize=6)
+                    label=f'True Traj {traj["id"]}', 
+                    color=color_scheme['trajectory']['true']['second'], 
+                    alpha=0.8, linewidth=2, markersize=6)
             # Plot predicted trajectory
             ax4.plot(pred_path[:, 0], pred_path[:, 1], 's--', 
-                    label=f'Pred Traj {traj["id"]}', color='purple', alpha=0.8, linewidth=2, markersize=6)
+                    label=f'Pred Traj {traj["id"]}', 
+                    color=color_scheme['trajectory']['pred']['second'], 
+                    alpha=0.8, linewidth=2, markersize=6)
             
             # Mark starting points with large red stars
             ax4.scatter(true_path[0, 0], true_path[0, 1], 
-                       s=150, c='red', marker='*', zorder=5, label='Start Point', edgecolors='black')
+                       s=150, c='red', marker='*', zorder=5, 
+                       label='Start Point', edgecolors='black')
             ax4.scatter(pred_path[0, 0], pred_path[0, 1], 
-                       s=150, c='darkred', marker='*', zorder=5, edgecolors='black')
+                       s=150, c='darkred', marker='*', zorder=5, 
+                       edgecolors='black')
         
-        ax4.set_title(f'{model_name} - Second Validation Trajectory', fontweight='bold', fontsize=12)
+        ax4.set_title(f'{model_name} - Second Validation Trajectory', 
+                     fontweight='bold', fontsize=12)
         ax4.set_xlabel('X Position', fontsize=11)
         ax4.set_ylabel('Y Position', fontsize=11)
         ax4.legend(fontsize=10)
@@ -325,6 +435,22 @@ def visualize_all_models():
     
     print(f"\nAll visualization plots have been saved to: results/plots/")
     print(f"Generated plots for {len(predictions)} models: {list(predictions.keys())}")
+    
+    # Print final comparison table
+    print("\nFinal Model Comparison:")
+    print("-" * 80)
+    print(f"{'Model':<15} {'RMSE X':>10} {'RMSE Y':>10} {'Combined RMSE':>15} {'Std X':>10} {'Std Y':>10}")
+    print("-" * 80)
+    
+    # Sort models by combined RMSE
+    sorted_results = sorted(rmse_scores.items(), key=lambda x: x[1])
+    for model_name, rmse in sorted_results:
+        pred = predictions[model_name]
+        rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
+        rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], pred[:, 1]))
+        std_x = np.std(Y_val[:, 0] - pred[:, 0])
+        std_y = np.std(Y_val[:, 1] - pred[:, 1])
+        print(f"{model_name:<15} {rmse_x:>10.2f} {rmse_y:>10.2f} {rmse:>15.2f} {std_x:>10.2f} {std_y:>10.2f}")
 
 
 def main():
@@ -333,6 +459,12 @@ def main():
     print("Training LSTM Model")
     print("=" * 60)
     train_lstm()
+    print("\n")
+    
+    print("=" * 60)
+    print("Training GRU Model")
+    print("=" * 60)
+    train_gru()
     print("\n")
     
     print("=" * 60)
@@ -376,14 +508,16 @@ def compare_models():
     
     # Check if all models exist
     lstm_path = Path('results/models/lstm_best_model.pth')
+    gru_path = Path('results/models/gru_model.pkl')
     linear_path = Path('results/models/linear_baseline_model.pkl')
     svr_path = Path('results/models/svr_model.pkl')
     rf_path = Path('results/models/rf_model.pkl')
     xgb_path = Path('results/models/xgb_model.pkl')
     mlp_path = Path('results/models/mlp_model.pkl')
     
-    if not all([lstm_path.exists(), linear_path.exists(), svr_path.exists(), 
-                rf_path.exists(), xgb_path.exists(), mlp_path.exists()]):
+    if not all([lstm_path.exists(), gru_path.exists(), linear_path.exists(), 
+                svr_path.exists(), rf_path.exists(), xgb_path.exists(), 
+                mlp_path.exists()]):
         print("All models need to be trained first for comparison.")
         return
     

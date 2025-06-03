@@ -36,8 +36,8 @@ XGB_CONFIG = {
 MLP_CONFIG = {
     'hidden_sizes': [128, 64, 32],  # Architecture: input -> 128 -> 64 -> 32 -> output
     'dropout': 0.3,
-    'learning_rate': 0.005,
-    'epochs': 800
+    'learning_rate': 0.001,
+    'epochs': 250
 }
 
 # Training Configuration
@@ -48,7 +48,9 @@ TRAINING_CONFIG = {
     'train_simulations': 19,
     'weight_decay': 1e-5,
     'validation_split': 0.2,
-    'random_seed': 42
+    'random_seed': 42,
+    'test_size': 0.2,
+    'validation_size': 0.2
 }
 
 # Feature Engineering Configuration
@@ -60,10 +62,9 @@ FEATURE_CONFIG = {
 
 # Data Processing Configuration
 DATA_CONFIG = {
-    'input_file': 'data/processed/FCPR-D1_CIR.csv',
+    'input_file': 'data/processed/FCPR-D3_CIR.csv',
     'target_column': 'r',
-    'processed_dir': 'data/processed',
-    'datasets': ['FCPR-D1']
+    'processed_dir': 'data/processed'
 }
 
 # Analysis Configuration
