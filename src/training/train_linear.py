@@ -139,12 +139,12 @@ def train_model():
     print(f"X-coordinate:")
     print(f"  RMSE: {rmse_x_trajs.mean():.2f}")
     print(f"  Std: {rmse_x_trajs.std():.2f}")
-    print(f"  Mean: {np.mean(Y_val[:, :, 0] - val_pred[:, :, 0]):.2f}")
+    print(f"  Mean: {np.mean(Y_val[:, 0] - val_pred[:, 0]):.2f}")
 
     print(f"Y-coordinate:")
     print(f"  RMSE: {rmse_y_trajs.mean():.2f}")
     print(f"  Std: {rmse_y_trajs.std():.2f}")
-    print(f"  Mean: {np.mean(Y_val[:, :, 1] - val_pred[:, :, 1]):.2f}")
+    print(f"  Mean: {np.mean(Y_val[:, 1] - val_pred[:, 1]):.2f}")
 
     # Combined metric
     rmse_combined = np.sqrt((rmse_x_trajs**2 + rmse_y_trajs**2) / 2)

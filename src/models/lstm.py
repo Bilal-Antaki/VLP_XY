@@ -8,24 +8,9 @@ import torch.nn as nn
 
 
 class TrajectoryLSTM(nn.Module):
-    def __init__(self, input_size=7, hidden_size=128, num_layers=3, output_size=2, dropout=0.3):
-        """
-        Improved LSTM model for trajectory prediction
-        
-        Parameters:
-        -----------
-        input_size : int
-            Number of input features (default: 7)
-        hidden_size : int
-            Hidden layer size
-        num_layers : int
-            Number of LSTM layers
-        output_size : int
-            Output size (X, Y coordinates = 2)
-        dropout : float
-            Dropout rate
-        """
-        super(TrajectoryLSTM, self).__init__()
+    """Sequence-to-Sequence LSTM: Feature sequence → Position sequence"""
+    def __init__(self, input_size=7, hidden_size=128, num_layers=2, dropout=0.3):
+        super().__init__()
         
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -43,11 +28,11 @@ class TrajectoryLSTM(nn.Module):
             bidirectional=False
         )
         
-        # Output layers with residual connections
+        # Output layers
         self.fc1 = nn.Linear(hidden_size, hidden_size // 2)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
-        self.fc2 = nn.Linear(hidden_size // 2, output_size)
+        self.fc2 = nn.Linear(hidden_size // 2, 2)  # X, Y coordinates
         
         # Initialize weights
         self._init_weights()
@@ -76,7 +61,7 @@ class TrajectoryLSTM(nn.Module):
             
         Returns:
         --------
-        torch.Tensor : Output tensor of shape (batch_size, seq_len, output_size)
+        torch.Tensor : Output tensor of shape (batch_size, seq_len, 2)
         """
         # Normalize input
         x = self.input_norm(x)
@@ -84,7 +69,7 @@ class TrajectoryLSTM(nn.Module):
         # LSTM forward pass
         lstm_out, _ = self.lstm(x)
         
-        # Apply output layers
+        # Apply output layers to each timestep
         out = self.fc1(lstm_out)
         out = self.relu(out)
         out = self.dropout(out)
