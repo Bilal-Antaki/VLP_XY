@@ -104,9 +104,9 @@ def train_model():
     # Initialize model
     model = TrajectoryLSTM(
         input_size=X_train.shape[-1], 
-        hidden_size=128, 
-        num_layers=2, 
-        dropout=0.3
+        hidden_size=MODEL_CONFIG['hidden_dim'], 
+        num_layers=MODEL_CONFIG['num_layers'], 
+        dropout=MODEL_CONFIG['dropout']
     )
     
     criterion = nn.MSELoss()
@@ -165,9 +165,9 @@ def train_model():
         'model_state_dict': model.state_dict(),
         'model_config': {
             'input_size': X_train.shape[-1],
-            'hidden_size': 128,
-            'num_layers': 2,
-            'dropout': 0.3
+            'hidden_size': MODEL_CONFIG['hidden_dim'],
+            'num_layers': MODEL_CONFIG['num_layers'],
+            'dropout': MODEL_CONFIG['dropout']
         },
         'scaler_X': scaler_X,
         'scaler_Y': scaler_Y,

@@ -4,9 +4,9 @@ Configuration settings for the Position Estimation project
 
 # LSTM Model Configuration
 MODEL_CONFIG = {
-    'hidden_dim': 128,
+    'hidden_dim': 64,
     'num_layers': 3,
-    'dropout': 0.3,
+    'dropout': 0.3
 }
 
 # SVR Model Configuration
@@ -35,7 +35,7 @@ MLP_CONFIG = {
 # Training Configuration
 TRAINING_CONFIG = {
     'learning_rate': 0.001,
-    'batch_size': 8,
+    'batch_size': 32,
     'epochs': 250,
     'train_simulations': 19,
     'weight_decay': 1e-5,
@@ -54,7 +54,7 @@ FEATURE_CONFIG = {
 
 # Data Processing Configuration
 DATA_CONFIG = {
-    'input_file': 'data/processed/FCPR-D3_CIR.csv',
+    'input_file': 'data/processed/FCPR-D1_CIR.csv',
     'target_column': 'r',
     'processed_dir': 'data/processed'
 }

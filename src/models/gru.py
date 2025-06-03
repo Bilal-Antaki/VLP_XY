@@ -1,10 +1,11 @@
 """
-GRU model for trajectory prediction
+GRU model for trajectory prediction with proper sequence handling
 """
 
 import torch
 import torch.nn as nn
 from sklearn.preprocessing import StandardScaler
+import numpy as np
 
 
 class GRUNetwork(nn.Module):
@@ -83,9 +84,11 @@ class GRUModel:
         X_scaled = self.scaler_features.fit_transform(X)
         y_scaled = self.scaler_targets.fit_transform(y)
         
-        # Reshape for sequence data (batch_size, seq_len, features)
-        X_reshaped = X_scaled.reshape(-1, 10, X_scaled.shape[1])
-        y_reshaped = y_scaled.reshape(-1, 10, 2)
+        # IMPORTANT: Reshape for sequence data respecting trajectory boundaries
+        # Assumes data comes in trajectory order: first 10 points are trajectory 0, next 10 are trajectory 1, etc.
+        n_trajectories = len(X_scaled) // 10
+        X_reshaped = X_scaled.reshape(n_trajectories, 10, X_scaled.shape[1])
+        y_reshaped = y_scaled.reshape(n_trajectories, 10, 2)
         
         # Convert to tensors
         X_tensor = torch.FloatTensor(X_reshaped).to(self.device)
@@ -109,7 +112,7 @@ class GRUModel:
             loss.backward()
             optimizer.step()
             
-            if (epoch + 1) % 20 == 0:
+            if (epoch + 1) % 50 == 0:
                 print(f'Epoch [{epoch+1}/{self.epochs}], Loss: {loss.item():.4f}')
         
         self.is_fitted = True
@@ -123,7 +126,8 @@ class GRUModel:
         X_scaled = self.scaler_features.transform(X)
         
         # Reshape for sequence data
-        X_reshaped = X_scaled.reshape(-1, 10, X_scaled.shape[1])
+        n_trajectories = len(X_scaled) // 10
+        X_reshaped = X_scaled.reshape(n_trajectories, 10, X_scaled.shape[1])
         X_tensor = torch.FloatTensor(X_reshaped).to(self.device)
         
         # Predict
@@ -137,4 +141,4 @@ class GRUModel:
         # Inverse transform predictions
         predictions = self.scaler_targets.inverse_transform(predictions_scaled)
         
-        return predictions.astype(int) 
+        return predictions.astype(int)

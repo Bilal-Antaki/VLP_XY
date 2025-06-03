@@ -7,6 +7,7 @@ from src.training.train_gru import train_model as train_gru
 from src.training.train_svr import train_model as train_svr
 from src.training.train_mlp import train_model as train_mlp
 from src.training.train_rf import train_model as train_rf
+from src.training.train_rnn import train_model as train_rnn
 from main_preproccessing import run_complete_pipeline
 from src.config import TRAINING_CONFIG, MLP_CONFIG
 from sklearn.metrics import mean_squared_error
@@ -121,14 +122,30 @@ def load_model_predictions():
     try:
         lstm_data = torch.load('results/models/lstm_best_model.pth', weights_only=False)
         from src.models.lstm import TrajectoryLSTM
-        model_config = lstm_data['model_config']
+        
+        # Get current input size from data
+        input_size = X_val.shape[1]
+        
+        # Initialize model with current input size and saved config
         lstm_model = TrajectoryLSTM(
-            input_size=model_config['input_size'],
-            hidden_size=model_config['hidden_size'],
-            num_layers=model_config['num_layers'],
-            dropout=model_config['dropout']
+            input_size=input_size,  # Use current feature count
+            hidden_size=lstm_data['model_config']['hidden_size'],
+            num_layers=lstm_data['model_config']['num_layers'],
+            dropout=lstm_data['model_config']['dropout']
         )
-        lstm_model.load_state_dict(lstm_data['model_state_dict'])
+        
+        # Get current state dict
+        current_state_dict = lstm_model.state_dict()
+        
+        # Filter out incompatible layers from saved state dict
+        filtered_state_dict = {k: v for k, v in lstm_data['model_state_dict'].items() 
+                             if k in current_state_dict and v.shape == current_state_dict[k].shape}
+        
+        # Update current state dict with compatible layers
+        current_state_dict.update(filtered_state_dict)
+        
+        # Load the filtered state dict
+        lstm_model.load_state_dict(current_state_dict)
         lstm_model.eval()
         
         # Prepare LSTM data (sequence-to-sequence)
@@ -165,6 +182,7 @@ def load_model_predictions():
         print(f"LSTM model loaded - RMSE: {rmse_scores['LSTM']:.2f}")
     except Exception as e:
         print(f"Failed to load LSTM model: {e}")
+        print("Consider retraining the LSTM model with the current feature set.")
     
     # Load RNN model
     try:
@@ -399,6 +417,12 @@ def main():
     print("\n")
     
     print("=" * 60)
+    print("Training RNN Model")
+    print("=" * 60)
+    train_rnn()
+    print("\n")
+    
+    print("=" * 60)
     print("Training Linear Baseline Model")
     print("=" * 60)
     train_linear()
@@ -462,3 +486,4 @@ if __name__ == "__main__":
 # TODO:
 # - Randomly select 4 trajectories for validation set
 # - improve feature selection method by either considering correlation analysis to drop strongly correlated features or use PCA
+# - 

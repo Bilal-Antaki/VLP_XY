@@ -26,30 +26,70 @@ def set_seed(seed=42):
     os.environ['PYTHONHASHSEED'] = str(seed)
 
 
+def prepare_sequence_data():
+    """Prepare sequence-to-sequence data maintaining trajectory structure"""
+    df = pd.read_csv('data/features/features_selected.csv')
+    feature_cols = [col for col in df.columns 
+                   if col not in ['X', 'Y', 'trajectory_id', 'step_id']]
+    
+    print(f"Using features: {feature_cols}")
+    
+    # Prepare training trajectories (0-15)
+    X_train_sequences = []
+    Y_train_sequences = []
+    
+    for traj_id in range(16):
+        traj_data = df[df['trajectory_id'] == traj_id].sort_values('step_id')
+        if len(traj_data) == 10:
+            # Input: feature sequence for this trajectory
+            X_train_sequences.append(traj_data[feature_cols].values)
+            # Output: position sequence for this trajectory
+            Y_train_sequences.append(traj_data[['X', 'Y']].values)
+    
+    # Prepare validation trajectories (16-19)
+    X_val_sequences = []
+    Y_val_sequences = []
+    
+    for traj_id in range(16, 20):
+        traj_data = df[df['trajectory_id'] == traj_id].sort_values('step_id')
+        if len(traj_data) == 10:
+            # Input: feature sequence for this trajectory
+            X_val_sequences.append(traj_data[feature_cols].values)
+            # Output: position sequence for this trajectory
+            Y_val_sequences.append(traj_data[['X', 'Y']].values)
+    
+    X_train = np.array(X_train_sequences)  # (16, 10, features)
+    Y_train = np.array(Y_train_sequences)  # (16, 10, 2)
+    X_val = np.array(X_val_sequences)      # (4, 10, features)
+    Y_val = np.array(Y_val_sequences)      # (4, 10, 2)
+    
+    print(f"Training shape: X={X_train.shape}, Y={Y_train.shape}")
+    print(f"Validation shape: X={X_val.shape}, Y={Y_val.shape}")
+    print("Task: Feature sequence → Position sequence (maintaining trajectory structure)")
+    
+    return X_train, Y_train, X_val, Y_val
+
+
 def train_model():
     """Train and evaluate RNN model"""
     # Set random seed
     set_seed(TRAINING_CONFIG['random_seed'])
     
-    # Load data
-    df = pd.read_csv('data/features/features_selected.csv')
+    # Prepare sequence data
+    X_train, Y_train, X_val, Y_val = prepare_sequence_data()
     
-    # Get feature columns
-    feature_cols = [col for col in df.columns 
-                   if col not in ['X', 'Y', 'trajectory_id', 'step_id']]
+    # Flatten for the current RNN model implementation
+    # Note: The model will reshape internally, but we need to maintain trajectory order
+    X_train_flat = X_train.reshape(-1, X_train.shape[-1])
+    Y_train_flat = Y_train.reshape(-1, 2)
     
-    # Split data
-    train_df = df[df['trajectory_id'] < 16]
-    val_df = df[df['trajectory_id'] >= 16]
-    
-    X_train = train_df[feature_cols].values
-    y_train = train_df[['X', 'Y']].values
-    
-    X_val = val_df[feature_cols].values
-    y_val = val_df[['X', 'Y']].values
+    X_val_flat = X_val.reshape(-1, X_val.shape[-1])
+    Y_val_flat = Y_val.reshape(-1, 2)
     
     # Train model
-    print(f"Training RNN model with hidden_dim={MODEL_CONFIG['hidden_dim']}, num_layers={MODEL_CONFIG['num_layers']}, dropout={MODEL_CONFIG['dropout']}...")
+    print(f"\nTraining RNN model with hidden_dim={MODEL_CONFIG['hidden_dim']}, num_layers={MODEL_CONFIG['num_layers']}, dropout={MODEL_CONFIG['dropout']}...")
+    print("Objective: Minimize average error across all 16 training trajectories")
+    
     model = RNNModel(
         hidden_dim=MODEL_CONFIG['hidden_dim'],
         num_layers=MODEL_CONFIG['num_layers'],
@@ -57,7 +97,9 @@ def train_model():
         learning_rate=TRAINING_CONFIG['learning_rate'],
         epochs=TRAINING_CONFIG['epochs']
     )
-    model.fit(X_train, y_train)
+    
+    # The model's fit method will handle the reshaping correctly
+    model.fit(X_train_flat, Y_train_flat)
     
     print("Training complete!")
     
@@ -73,7 +115,7 @@ def train_model():
             'hidden_dim': model.hidden_dim,
             'num_layers': model.num_layers,
             'dropout': model.dropout,
-            'input_size': X_train.shape[1]
+            'input_size': X_train.shape[-1]
         },
         'scaler_features': model.scaler_features,
         'scaler_targets': model.scaler_targets,
@@ -83,33 +125,52 @@ def train_model():
     
     print(f"\nModel saved to: {model_path}")
     
-    # Predict
-    y_pred = model.predict(X_val)
+    # Evaluate on validation trajectories
+    print("\nValidating on 4 trajectories (sequence-to-sequence)...")
     
-    # Calculate metrics
-    rmse_x = np.sqrt(mean_squared_error(y_val[:, 0], y_pred[:, 0]))
-    rmse_y = np.sqrt(mean_squared_error(y_val[:, 1], y_pred[:, 1]))
+    # Predict on flattened validation data
+    y_pred_flat = model.predict(X_val_flat)
     
-    errors_x = np.abs(y_val[:, 0] - y_pred[:, 0])
-    errors_y = np.abs(y_val[:, 1] - y_pred[:, 1])
+    # Reshape predictions back to trajectory format
+    y_pred = y_pred_flat.reshape(X_val.shape[0], X_val.shape[1], 2)
     
-    # Print results
-    print("\nRNN Results:")
-    print("-" * 40)
-    print(f"X coordinate:")
-    print(f"  RMSE: {rmse_x:.2f}")
-    print(f"  Std: {errors_x.std():.2f}")
-    print(f"  Mean: {np.mean(y_val[:, 0] - y_pred[:, 0]):.2f}")
-
-    print(f"\nY coordinate:")
-    print(f"  RMSE: {rmse_y:.2f}")
-    print(f"  Std: {errors_y.std():.2f}")
-    print(f"  Mean: {np.mean(y_val[:, 1] - y_pred[:, 1]):.2f}")
+    # Calculate trajectory-level metrics
+    print("\nTrajectory-Level Validation Results:")
+    print("="*60)
     
-    # Combined metric
-    rmse_combined = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
-    print(f"\nCombined RMSE: {rmse_combined:.2f}")
+    total_rmse_x = 0
+    total_rmse_y = 0
+    
+    for i in range(4):
+        traj_id = 16 + i
+        
+        # RMSE for this trajectory
+        rmse_x = np.sqrt(mean_squared_error(Y_val[i, :, 0], y_pred[i, :, 0]))
+        rmse_y = np.sqrt(mean_squared_error(Y_val[i, :, 1], y_pred[i, :, 1]))
+        rmse_combined = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
+        
+        total_rmse_x += rmse_x
+        total_rmse_y += rmse_y
+        
+        print(f"Trajectory {traj_id}: X-RMSE: {rmse_x:.2f}, Y-RMSE: {rmse_y:.2f}, Combined: {rmse_combined:.2f}")
+        
+        # Show sample predictions for first trajectory
+        if i == 0:
+            print(f"  Sample predictions (Trajectory {traj_id}):")
+            for step in range(min(5, 10)):
+                print(f"    Step {step+1}: True=({Y_val[i, step, 0]}, {Y_val[i, step, 1]}) "
+                      f"Pred=({y_pred[i, step, 0]}, {y_pred[i, step, 1]})")
+    
+    # Overall metrics
+    avg_rmse_x = total_rmse_x / 4
+    avg_rmse_y = total_rmse_y / 4
+    avg_rmse_combined = np.sqrt((avg_rmse_x**2 + avg_rmse_y**2) / 2)
+    
+    print(f"\nOverall Average:")
+    print(f"X-coordinate RMSE: {avg_rmse_x:.2f}")
+    print(f"Y-coordinate RMSE: {avg_rmse_y:.2f}")
+    print(f"Combined RMSE: {avg_rmse_combined:.2f}")
 
 
 if __name__ == "__main__":
-    train_model() 
+    train_model()
