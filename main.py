@@ -59,7 +59,6 @@ def load_model_predictions():
         rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
         rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], pred[:, 1]))
         rmse_scores['Linear'] = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
-        print(f"Linear model loaded - RMSE: {rmse_scores['Linear']:.2f}")
     except Exception as e:
         print(f"Failed to load Linear model: {e}")
     
@@ -72,7 +71,6 @@ def load_model_predictions():
         rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
         rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], pred[:, 1]))
         rmse_scores['SVR'] = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
-        print(f"SVR model loaded - RMSE: {rmse_scores['SVR']:.2f}")
     except Exception as e:
         print(f"Failed to load SVR model: {e}")
     
@@ -85,7 +83,6 @@ def load_model_predictions():
         rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
         rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], pred[:, 1]))
         rmse_scores['Random Forest'] = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
-        print(f"Random Forest model loaded - RMSE: {rmse_scores['Random Forest']:.2f}")
     except Exception as e:
         print(f"Failed to load Random Forest model: {e}")
     
@@ -114,7 +111,6 @@ def load_model_predictions():
         rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
         rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], pred[:, 1]))
         rmse_scores['MLP'] = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
-        print(f"MLP model loaded - RMSE: {rmse_scores['MLP']:.2f}")
     except Exception as e:
         print(f"Failed to load MLP model: {e}")
     
@@ -179,7 +175,6 @@ def load_model_predictions():
         rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], predictions['LSTM'][:, 0]))
         rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], predictions['LSTM'][:, 1]))
         rmse_scores['LSTM'] = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
-        print(f"LSTM model loaded - RMSE: {rmse_scores['LSTM']:.2f}")
     except Exception as e:
         print(f"Failed to load LSTM model: {e}")
         print("Consider retraining the LSTM model with the current feature set.")
@@ -233,7 +228,6 @@ def load_model_predictions():
         rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
         rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], pred[:, 1]))
         rmse_scores['RNN'] = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
-        print(f"RNN model loaded - RMSE: {rmse_scores['RNN']:.2f}")
     except Exception as e:
         print(f"Failed to load RNN model: {e}")
         print("Consider retraining the RNN model with the current feature set.")
@@ -264,43 +258,65 @@ def load_model_predictions():
         rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
         rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], pred[:, 1]))
         rmse_scores['GRU'] = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
-        print(f"GRU model loaded - RMSE: {rmse_scores['GRU']:.2f}")
     except Exception as e:
         print(f"Failed to load GRU model: {e}")
     
     return predictions, rmse_scores, Y_val, val_trajectories, df
 
 
-def create_model_comparison_plot(rmse_scores):
+def create_model_comparison_plot(rmse_scores, predictions, Y_val):
     """Create model RMSE comparison plot"""
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(15, 8))
     
-    # Sort models by RMSE score for better visualization
+    # Sort models by combined RMSE score for better visualization
     sorted_models = sorted(rmse_scores.items(), key=lambda x: x[1])
     models = [m[0] for m in sorted_models]
-    scores = [m[1] for m in sorted_models]
     
-    # Use a color palette that's colorblind-friendly
-    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2']
+    # Get X and Y RMSE scores for each model
+    x_scores = []
+    y_scores = []
+    combined_scores = []
     
-    bars = plt.bar(models, scores, color=colors[:len(models)])
+    for model_name in models:
+        pred = predictions[model_name]
+        rmse_x = np.sqrt(mean_squared_error(Y_val[:, 0], pred[:, 0]))
+        rmse_y = np.sqrt(mean_squared_error(Y_val[:, 1], pred[:, 1]))
+        rmse_combined = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
+        
+        x_scores.append(rmse_x)
+        y_scores.append(rmse_y)
+        combined_scores.append(rmse_combined)
+    
+    # Set width of bars
+    barWidth = 0.25
+    
+    # Set positions of the bars on X axis
+    r1 = np.arange(len(models))
+    r2 = [x + barWidth for x in r1]
+    r3 = [x + barWidth for x in r2]
+    
+    # Create grouped bar chart
+    plt.bar(r1, x_scores, width=barWidth, label='X RMSE', color='#1f77b4')
+    plt.bar(r2, y_scores, width=barWidth, label='Y RMSE', color='#ff7f0e')
+    plt.bar(r3, combined_scores, width=barWidth, label='Combined RMSE', color='#2ca02c')
     
     # Add value labels on bars
-    for bar, score in zip(bars, scores):
-        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1,
-                f'{score:.1f}', ha='center', va='bottom', fontweight='bold')
+    for i in range(len(models)):
+        plt.text(r1[i], x_scores[i], f'{x_scores[i]:.1f}', ha='center', va='bottom', fontweight='bold')
+        plt.text(r2[i], y_scores[i], f'{y_scores[i]:.1f}', ha='center', va='bottom', fontweight='bold')
+        plt.text(r3[i], combined_scores[i], f'{combined_scores[i]:.1f}', ha='center', va='bottom', fontweight='bold')
     
-    plt.title('Model Performance Comparison - Combined RMSE', fontsize=14, fontweight='bold')
+    plt.title('Model Performance Comparison - RMSE Metrics', fontsize=14, fontweight='bold')
     plt.xlabel('Models', fontsize=12)
     plt.ylabel('RMSE', fontsize=12)
-    plt.xticks(rotation=45, ha='right')
+    plt.xticks([r + barWidth for r in range(len(models))], models, rotation=45, ha='right')
+    plt.legend()
     plt.grid(axis='y', alpha=0.3)
     plt.tight_layout()
     
     # Save plot
     plt.savefig('results/plots/model_rmse_comparison.png', dpi=300, bbox_inches='tight')
     plt.close()
-    print("Model comparison plot saved to: results/plots/model_rmse_comparison.png")
 
 
 def create_individual_model_plots(predictions, Y_val, val_trajectories, df):
@@ -316,8 +332,6 @@ def create_individual_model_plots(predictions, Y_val, val_trajectories, df):
     }
     
     for model_name, pred in predictions.items():
-        print(f"Creating plots for {model_name}...")
-        
         # Create figure with 1x2 subplots
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
         
@@ -359,13 +373,9 @@ def create_individual_model_plots(predictions, Y_val, val_trajectories, df):
         filename = f'results/plots/{model_name.lower().replace(" ", "_")}_performance.png'
         plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"{model_name} performance plot saved to: {filename}")
 
 
 def visualize_all_models():
-    """Generate all visualization plots for trained models"""
-    print("Loading models and generating predictions...")
-    
     # Ensure results/plots directory exists
     Path('results/plots').mkdir(parents=True, exist_ok=True)
     
@@ -377,13 +387,10 @@ def visualize_all_models():
         return
     
     # Create model comparison plot
-    create_model_comparison_plot(rmse_scores)
+    create_model_comparison_plot(rmse_scores, predictions, Y_val)
     
     # Create individual model plots
     create_individual_model_plots(predictions, Y_val, val_trajectories, df)
-    
-    print(f"\nAll visualization plots have been saved to: results/plots/")
-    print(f"Generated plots for {len(predictions)} models: {list(predictions.keys())}")
     
     # Print final comparison table
     print("\nFinal Model Comparison:")
@@ -404,58 +411,48 @@ def visualize_all_models():
 
 def main():
     # Train all models
-    print("=" * 60)
     print("Training LSTM Model")
     print("=" * 60)
     train_lstm()
     print("\n")
     
-    print("=" * 60)
     print("Training GRU Model")
     print("=" * 60)
     train_gru()
     print("\n")
     
-    print("=" * 60)
     print("Training RNN Model")
     print("=" * 60)
     train_rnn()
     print("\n")
     
-    print("=" * 60)
     print("Training Linear Baseline Model")
     print("=" * 60)
     train_linear()
     print("\n")
     
-    print("=" * 60)
     print("Training SVR Model")
     print("=" * 60)
     train_svr()
     print("\n")
     
-    print("=" * 60)
     print("Training Random Forest Model")
     print("=" * 60)
     train_rf()
     print("\n")
     
-    print("=" * 60)
     print("Training MLP (Multi-Layer Perceptron) Model")
     print("=" * 60)
     train_mlp()
     print("\n")
     
-    print("=" * 60)
     print("Model Comparison Summary")
     print("=" * 60)
-    compare_models()
+    check_models()
 
 
-def compare_models():
-    """Compare the performance of all models"""
-    
-    # Check if all models exist
+def check_models():
+
     lstm_path = Path('results/models/lstm_best_model.pth')
     gru_path = Path('results/models/gru_model.pkl')
     linear_path = Path('results/models/linear_baseline_model.pkl')
@@ -468,17 +465,15 @@ def compare_models():
         print("All models need to be trained first for comparison.")
         return
     
-    print("\nGenerating visualization plots for all models...")
     visualize_all_models()
     print("All models have been trained and visualized successfully.")
 
 
 if __name__ == "__main__":
-    # Run the complete pipeline
+    # Run the preprocessing pipeline
     features_df, selected_features, (X_train, Y_train, X_val, Y_val) = run_complete_pipeline()
-    print(X_train.shape)
-    print(Y_train.shape)
 
+    # Train all models
     main()
 
 

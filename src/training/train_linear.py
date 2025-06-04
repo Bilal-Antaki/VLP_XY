@@ -35,7 +35,7 @@ def prepare_trajectory_data():
     feature_cols = [col for col in df.columns 
                    if col not in ['X', 'Y', 'trajectory_id', 'step_id']]
     
-    print(f"Using features: {feature_cols}")
+    
     
     # Prepare training trajectories (0-15)
     X_train_trajectories = []
@@ -157,14 +157,6 @@ def train_model():
         
         print(f"Trajectory {traj_id}: X-RMSE: {rmse_x:.2f}, Y-RMSE: {rmse_y:.2f}, Combined: {rmse_combined:.2f}")
         
-        # Show sample predictions for first trajectory
-        if traj_id == 16:
-            print(f"  Sample predictions (Trajectory {traj_id}):")
-            for step in range(min(5, 10)):
-                true_pos = Y_val_trajectories[0][step]
-                pred_pos = val_predictions[0][step]
-                print(f"    Step {step+1}: True=({true_pos[0]}, {true_pos[1]}) "
-                      f"Pred=({pred_pos[0]}, {pred_pos[1]})")
     
     avg_rmse_x = total_rmse_x / len(trajectory_errors)
     avg_rmse_y = total_rmse_y / len(trajectory_errors)
@@ -184,16 +176,6 @@ def load_and_evaluate():
         print(f"Model not found at {model_path}. Train the model first.")
         return
     
-    # Load model
-    checkpoint = joblib.load(model_path)
-    model = checkpoint['model']
-    
-    print(f"Model loaded from: {model_path}")
-    
-    # Load test data
-    df = pd.read_csv('data/features/features_selected.csv')
-    feature_cols = [col for col in df.columns 
-                   if col not in ['X', 'Y', 'trajectory_id', 'step_id']]
         
         
 

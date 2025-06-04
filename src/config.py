@@ -4,22 +4,22 @@ Configuration settings for the Position Estimation project
 
 # LSTM Model Configuration
 MODEL_CONFIG = {
-    'hidden_dim': 64,
+    'hidden_dim': 100,
     'num_layers': 3,
     'dropout': 0.3
 }
 
 # SVR Model Configuration
 SVR_CONFIG = {
-    'kernel': 'rbf',  # 'linear', 'poly', 'rbf', 'sigmoid'
-    'C': 1.0,         # Regularization parameter
-    'epsilon': 0.1,   # Epsilon-tube width
+    'kernel': 'sigmoid',  # 'linear', 'poly', 'rbf', 'sigmoid'
+    'C': 1.5,         # Regularization parameter
+    'epsilon': 0.05,   # Epsilon-tube width
     'gamma': 'scale'  # Kernel coefficient for 'rbf', 'poly' and 'sigmoid'
 }
 
 # Random Forest Configuration
 RF_CONFIG = {
-    'n_estimators': 100,
+    'n_estimators': 150,
     'max_depth': None,
     'random_state': 42
 }
@@ -28,15 +28,15 @@ RF_CONFIG = {
 MLP_CONFIG = {
     'hidden_sizes': [128, 64, 32],  # Architecture: input -> 128 -> 64 -> 32 -> output
     'dropout': 0.3,
-    'learning_rate': 0.001,
-    'epochs': 400
+    'learning_rate': 0.01,
+    'epochs': 300
 }
 
 # Training Configuration
 TRAINING_CONFIG = {
-    'learning_rate': 0.001,
-    'batch_size': 32,
-    'epochs': 250,
+    'learning_rate': 0.005,
+    'batch_size': 10,
+    'epochs': 300,
     'train_simulations': 19,
     'weight_decay': 1e-5,
     'validation_split': 0.2,

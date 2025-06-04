@@ -32,7 +32,6 @@ def run_complete_pipeline(selection_method='lasso'):
         (features_df, selected_features, (X_train, Y_train, X_val, Y_val))
     """
     print("\nRunning complete preprocessing pipeline...")
-    print(f"Method: {selection_method.upper()}")
     
     # Run feature selection
     selected_features = run_feature_selection(method=selection_method)

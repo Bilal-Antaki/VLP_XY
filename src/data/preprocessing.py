@@ -33,35 +33,27 @@ def load_and_preprocess_data(feature_file_path, train_trajectories=16, approach=
     --------
     dict containing different data formats based on approach
     """
-    print(f"\nLoading data from: {feature_file_path}")
-    print(f"Preprocessing approach: {approach}")
     
     # Load feature data
     try:
         df = pd.read_csv(feature_file_path)
     except Exception as e:
         raise Exception(f"Error loading data: {str(e)}")
-    
-    print(f"Total records: {len(df)}")
+
     
     # Sort by trajectory and step
     df = df.sort_values(by=["trajectory_id", "step_id"]).reset_index(drop=True)
     
     # Feature columns (exclude x, y, trajectory_id, step_id)
     feature_cols = [col for col in df.columns if col not in ["X", "Y", "trajectory_id", "step_id"]]
-    print(f"Features used: {feature_cols}")
     
     # Get unique trajectories
     trajectory_ids = sorted(df["trajectory_id"].unique())
     n_trajectories = len(trajectory_ids)
-    print(f"Number of trajectories: {n_trajectories}")
     
     # Split trajectories into train and validation
     train_traj_ids = trajectory_ids[:train_trajectories]
     val_traj_ids = trajectory_ids[train_trajectories:]
-    
-    print(f"Training trajectories: {len(train_traj_ids)}")
-    print(f"Validation trajectories: {len(val_traj_ids)}")
     
     if approach == 'full_trajectory':
         return preprocess_full_trajectory(df, feature_cols, train_traj_ids, val_traj_ids)
@@ -98,10 +90,6 @@ def preprocess_full_trajectory(df, feature_cols, train_traj_ids, val_traj_ids):
     Y_train = np.array(Y_train)
     X_val = np.array(X_val)
     Y_val = np.array(Y_val)
-    
-    print(f"\nFull trajectory approach:")
-    print(f"Training: {X_train.shape}")
-    print(f"Validation: {X_val.shape}")
     
     return X_train, Y_train, X_val, Y_val
 
@@ -142,10 +130,6 @@ def preprocess_next_step(df, feature_cols, train_traj_ids, val_traj_ids, history
     X_val = np.array(X_val)
     Y_val = np.array(Y_val)
     
-    print(f"\nNext-step prediction approach:")
-    print(f"Training: X={X_train.shape}, Y={Y_train.shape}")
-    print(f"Validation: X={X_val.shape}, Y={Y_val.shape}")
-    
     return X_train, Y_train, X_val, Y_val
 
 
@@ -185,10 +169,6 @@ def preprocess_sliding_window(df, feature_cols, train_traj_ids, val_traj_ids, wi
     Y_train = np.array(Y_train)
     X_val = np.array(X_val)
     Y_val = np.array(Y_val)
-    
-    print(f"\nSliding window approach (window_size={window_size}):")
-    print(f"Training: {X_train.shape}")
-    print(f"Validation: {X_val.shape}")
     
     return X_train, Y_train, X_val, Y_val
 
@@ -284,9 +264,5 @@ def prepare_training_data(features_df, selected_features):
     Y_train = Y[train_mask]
     X_val = X[val_mask]
     Y_val = Y[val_mask]
-    
-    print(f"\nData split:")
-    print(f"Training set: {X_train.shape[0]} samples from {len(train_trajectories)} trajectories")
-    print(f"Validation set: {X_val.shape[0]} samples from {len(val_trajectories)} trajectories")
     
     return X_train, Y_train, X_val, Y_val

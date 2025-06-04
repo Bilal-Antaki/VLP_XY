@@ -45,8 +45,6 @@ class TrajectoryDataLoader:
                 raise ValueError(f"Missing required columns: {missing_columns}")
             
             print(f"Successfully loaded data from {self.data_path}")
-            print(f"Data shape: {df.shape}")
-            print(f"Columns: {df.columns.tolist()}")
             
             return df
             
@@ -89,11 +87,6 @@ class TrajectoryDataLoader:
         train_df = df[df['trajectory_id'].isin(train_traj_ids)].copy()
         val_df = df[df['trajectory_id'].isin(val_traj_ids)].copy()
         
-        print(f"\nTrajectory split:")
-        print(f"Total trajectories: {total_trajectories}")
-        print(f"Training trajectories: {len(train_traj_ids)} ({len(train_df)} points)")
-        print(f"Validation trajectories: {len(val_traj_ids)} ({len(val_df)} points)")
-        
         return train_df, val_df, train_traj_ids, val_traj_ids
 
 
@@ -106,10 +99,6 @@ def main():
     
     # Load data
     df = loader.load_data()
-    
-    # Display basic statistics
-    print("\nData statistics:")
-    print(df[['X', 'Y', 'PL', 'RMS']].describe())
     
     # Split into trajectories
     train_df, val_df, train_ids, val_ids = loader.split_trajectories(df)

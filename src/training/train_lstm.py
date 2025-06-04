@@ -33,7 +33,7 @@ def prepare_sequence_data():
     feature_cols = [col for col in df.columns 
                    if col not in ['X', 'Y', 'trajectory_id', 'step_id']]
     
-    print(f"Using features: {feature_cols}")
+    
     
     # Prepare training trajectories (0-15)
     X_train = []
@@ -207,13 +207,6 @@ def train_model():
             total_rmse_y += rmse_y
             
             print(f"Trajectory {traj_id}: X-RMSE: {rmse_x:.2f}, Y-RMSE: {rmse_y:.2f}, Combined: {rmse_combined:.2f}")
-            
-            # Show sample predictions for first trajectory
-            if i == 0:
-                print(f"  Sample predictions (Trajectory {traj_id}):")
-                for step in range(min(5, 10)):
-                    print(f"    Step {step+1}: True=({Y_val_true[i, step, 0]}, {Y_val_true[i, step, 1]}) "
-                          f"Pred=({val_pred[i, step, 0]}, {val_pred[i, step, 1]})")
         
         avg_rmse_x = total_rmse_x / 4
         avg_rmse_y = total_rmse_y / 4

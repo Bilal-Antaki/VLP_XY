@@ -222,8 +222,6 @@ class FeatureEngineer:
         exclude_cols = ['X', 'Y', 'r', 'trajectory_id', 'step_id']
         self.feature_names = [col for col in features_df.columns if col not in exclude_cols]
         
-        print(f"\nTotal features created: {len(self.feature_names)}")
-        print(f"Feature names: {self.feature_names[:10]}... (showing first 10)")
         
         return features_df
 
@@ -250,8 +248,6 @@ def main():
     # Save all features
     output_path = output_dir / 'features_all.csv'
     features_df.to_csv(output_path, index=False)
-    print(f"\nSaved all features to: {output_path}")
-    print(f"Shape: {features_df.shape}")
     
     return features_df, engineer.feature_names
 

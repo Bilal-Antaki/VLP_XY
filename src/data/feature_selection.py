@@ -52,8 +52,6 @@ class FeatureSelector:
         pd.DataFrame : DataFrame with all features
         """
         df = pd.read_csv(features_path)
-        print(f"Loaded features from: {features_path}")
-        print(f"Shape: {df.shape}")
         return df
     
     def prepare_data(self, df):
@@ -93,10 +91,6 @@ class FeatureSelector:
         X = df_clean[feature_cols].values
         y = df_clean[self.target_cols].values
         
-        print(f"\nFeature matrix shape: {X.shape}")
-        print(f"Target matrix shape: {y.shape}")
-        print(f"Number of trajectories: {df_clean['trajectory_id'].nunique()}")
-        
         return X, y, feature_cols
     
     def lasso_selection(self, X, y, feature_names):
@@ -116,7 +110,6 @@ class FeatureSelector:
         --------
         list : Selected feature names
         """
-        print(f"\n--- Lasso-based Feature Selection (Top {self.n_features} features) ---")
         
         # Scale features
         X_scaled = self.scaler.fit_transform(X)
@@ -132,9 +125,6 @@ class FeatureSelector:
             
             # Get feature importance scores
             importance = np.abs(lasso.coef_)
-            
-            # Print alpha value
-            print(f"Lasso alpha for {target}: {lasso.alpha_:.6f}")
             
             # Store scores for each feature
             for feat, imp in zip(feature_names, importance):
@@ -176,7 +166,6 @@ class FeatureSelector:
         --------
         list : Selected feature names
         """
-        print(f"\n--- Random Forest Feature Selection (Top {self.n_features} features) ---")
         
         # Use MultiOutputRegressor for multi-target regression
         rf = MultiOutputRegressor(
@@ -194,12 +183,6 @@ class FeatureSelector:
         
         # Create a dict of feature scores
         feature_score_dict = dict(zip(feature_names, feature_importance))
-        
-        # Print scores for mandatory features
-        print(f"\nMandatory feature scores:")
-        for feat in self.mandatory_features:
-            if feat in feature_score_dict:
-                print(f"  {feat}: {feature_score_dict[feat]:.4f}")
         
         # Get top features (excluding mandatory ones first)
         non_mandatory_features = [f for f in feature_names if f not in self.mandatory_features]
@@ -346,9 +329,6 @@ class FeatureSelector:
         feature_df.to_csv(output_path, index=False)
         
         print(f"\n--- Feature Selection Complete ---")
-        print(f"Selected {len(self.selected_features)} features")
-        print(f"Saved to: {output_path}")
-        print(f"Output shape: {feature_df.shape}")
         
         # Print selected features
         print(f"\nSelected features:")

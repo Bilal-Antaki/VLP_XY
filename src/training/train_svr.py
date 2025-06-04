@@ -35,7 +35,7 @@ def prepare_data():
     feature_cols = [col for col in df.columns 
                    if col not in ['X', 'Y', 'trajectory_id', 'step_id']]
     
-    print(f"Using features: {feature_cols}")
+    
     
     # Split by trajectory IDs
     train_traj_ids = list(range(16))
@@ -156,18 +156,7 @@ def train_model():
     # Combined metric
     rmse_combined = np.sqrt((rmse_x_trajs**2 + rmse_y_trajs**2) / 2)
     print(f"\nCombined RMSE: {rmse_combined.mean():.2f} ± {rmse_combined.std():.2f}")
-    
-    # Print sample predictions
-    if val_trajectories:
-        sample_traj = val_trajectories[0]
-        sample_pred = model.predict(sample_traj['X'])
-        
-        print(f"\nSample predictions for trajectory {sample_traj['id']}:")
-        print("Step | True X | Pred X | True Y | Pred Y")
-        print("-" * 45)
-        for i in range(min(5, len(sample_pred))):  # Show first 5 steps
-            print(f"{i+1:4d} | {sample_traj['Y'][i, 0]:6.0f} | {sample_pred[i, 0]:6.0f} | "
-                  f"{sample_traj['Y'][i, 1]:6.0f} | {sample_pred[i, 1]:6.0f}")
+
 
 
 def load_and_evaluate():
@@ -181,8 +170,6 @@ def load_and_evaluate():
     # Load model
     checkpoint = joblib.load(model_path)
     model = checkpoint['model']
-    
-    print(f"Model loaded from: {model_path}")
     
     # Load test data
     df = pd.read_csv('data/features/features_selected.csv')
