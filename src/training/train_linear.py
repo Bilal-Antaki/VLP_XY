@@ -66,12 +66,6 @@ def prepare_trajectory_data():
     X_val_trajectories = np.array(X_val_trajectories)      # (4, 10, features)  
     Y_val_trajectories = np.array(Y_val_trajectories)      # (4, 10, 2)
     
-    print(f"Training trajectories: {X_train_trajectories.shape}")
-    print(f"Training positions: {Y_train_trajectories.shape}")
-    print(f"Validation trajectories: {X_val_trajectories.shape}")
-    print(f"Validation positions: {Y_val_trajectories.shape}")
-    print("Task: Fit parameters to minimize average error across all 16 training trajectories")
-    
     return (X_train_trajectories, Y_train_trajectories, X_val_trajectories, Y_val_trajectories)
 
 
@@ -111,9 +105,6 @@ def train_model():
     # Initialize model
     model = LinearBaselineModel()
     
-    print("\nTraining Trajectory-Level Linear Regression model...")
-    print("Objective: Minimize average error across all 16 training trajectories")
-    
     # Fit the model on trajectory sequences
     model.fit(X_train_trajectories, Y_train_trajectories)
     
@@ -134,14 +125,10 @@ def train_model():
     print(f"\nModel saved to: {model_path}")
     
     # Evaluate on validation trajectories
-    print("\nValidating on 4 trajectories...")
     val_predictions = model.predict_trajectories(X_val_trajectories)
     
     # Calculate trajectory-level metrics
     trajectory_errors = evaluate_trajectory_predictions(Y_val_trajectories, val_predictions)
-    
-    print("\nTrajectory-Level Validation Results:")
-    print("="*60)
     
     total_rmse_x = 0
     total_rmse_y = 0
@@ -155,17 +142,12 @@ def train_model():
         total_rmse_x += rmse_x
         total_rmse_y += rmse_y
         
-        print(f"Trajectory {traj_id}: X-RMSE: {rmse_x:.2f}, Y-RMSE: {rmse_y:.2f}, Combined: {rmse_combined:.2f}")
         
     
     avg_rmse_x = total_rmse_x / len(trajectory_errors)
     avg_rmse_y = total_rmse_y / len(trajectory_errors)
     avg_rmse_combined = np.sqrt((avg_rmse_x**2 + avg_rmse_y**2) / 2)
     
-    print(f"\nOverall Average:")
-    print(f"X-coordinate RMSE: {avg_rmse_x:.2f}")
-    print(f"Y-coordinate RMSE: {avg_rmse_y:.2f}")
-    print(f"Combined RMSE: {avg_rmse_combined:.2f}")
 
 
 def load_and_evaluate():

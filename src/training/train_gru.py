@@ -61,10 +61,6 @@ def prepare_sequence_data():
     X_val = np.array(X_val_sequences)      # (4, 10, features)
     Y_val = np.array(Y_val_sequences)      # (4, 10, 2)
     
-    print(f"Training shape: X={X_train.shape}, Y={Y_train.shape}")
-    print(f"Validation shape: X={X_val.shape}, Y={Y_val.shape}")
-    print("Task: Feature sequence → Position sequence (maintaining trajectory structure)")
-    
     return X_train, Y_train, X_val, Y_val
 
 
@@ -84,10 +80,7 @@ def train_model():
     X_val_flat = X_val.reshape(-1, X_val.shape[-1])
     Y_val_flat = Y_val.reshape(-1, 2)
     
-    # Train model
-    print(f"\nTraining GRU model with hidden_dim={MODEL_CONFIG['hidden_dim']}, num_layers={MODEL_CONFIG['num_layers']}, dropout={MODEL_CONFIG['dropout']}...")
-    print("Objective: Minimize average error across all 16 training trajectories")
-    
+
     model = GRUModel(
         hidden_dim=MODEL_CONFIG['hidden_dim'],
         num_layers=MODEL_CONFIG['num_layers'],
@@ -121,20 +114,12 @@ def train_model():
         'model_config': MODEL_CONFIG
     }, model_path)
     
-    print(f"\nModel saved to: {model_path}")
-    
-    # Evaluate on validation trajectories
-    print("\nValidating on 4 trajectories (sequence-to-sequence)...")
     
     # Predict on flattened validation data
     y_pred_flat = model.predict(X_val_flat)
     
     # Reshape predictions back to trajectory format
     y_pred = y_pred_flat.reshape(X_val.shape[0], X_val.shape[1], 2)
-    
-    # Calculate trajectory-level metrics
-    print("\nTrajectory-Level Validation Results:")
-    print("="*60)
     
     total_rmse_x = 0
     total_rmse_y = 0
@@ -150,18 +135,11 @@ def train_model():
         total_rmse_x += rmse_x
         total_rmse_y += rmse_y
         
-        print(f"Trajectory {traj_id}: X-RMSE: {rmse_x:.2f}, Y-RMSE: {rmse_y:.2f}, Combined: {rmse_combined:.2f}")
-        
     
     # Overall metrics
     avg_rmse_x = total_rmse_x / 4
     avg_rmse_y = total_rmse_y / 4
     avg_rmse_combined = np.sqrt((avg_rmse_x**2 + avg_rmse_y**2) / 2)
-    
-    print(f"\nOverall Average:")
-    print(f"X-coordinate RMSE: {avg_rmse_x:.2f}")
-    print(f"Y-coordinate RMSE: {avg_rmse_y:.2f}")
-    print(f"Combined RMSE: {avg_rmse_combined:.2f}")
 
 
 if __name__ == "__main__":

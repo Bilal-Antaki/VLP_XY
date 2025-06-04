@@ -4,17 +4,19 @@ Configuration settings for the Position Estimation project
 
 # LSTM Model Configuration
 MODEL_CONFIG = {
-    'hidden_dim': 100,
-    'num_layers': 3,
+    'hidden_dim': 64,
+    'num_layers': 5,
     'dropout': 0.3
 }
 
 # SVR Model Configuration
 SVR_CONFIG = {
-    'kernel': 'sigmoid',  # 'linear', 'poly', 'rbf', 'sigmoid'
-    'C': 1.5,         # Regularization parameter
-    'epsilon': 0.05,   # Epsilon-tube width
-    'gamma': 'scale'  # Kernel coefficient for 'rbf', 'poly' and 'sigmoid'
+    'kernel': 'rbf',         
+    'C': 15.0,             
+    'epsilon': 0.1,         
+    'gamma': 'scale',      
+    'tol': 1e-3,         
+    'max_iter': 10000        
 }
 
 # Random Forest Configuration
@@ -26,19 +28,22 @@ RF_CONFIG = {
 
 # MLP Configuration
 MLP_CONFIG = {
-    'hidden_sizes': [128, 64, 32],  # Architecture: input -> 128 -> 64 -> 32 -> output
-    'dropout': 0.3,
-    'learning_rate': 0.01,
-    'epochs': 300
+    'hidden_sizes': [256, 128, 64],  
+    'dropout': 0.3,             
+    'learning_rate': 0.01,       
+    'epochs': 400,              
+    'weight_decay': 1e-4,      
+    'patience': 30,            
+    'min_delta': 1e-4           
 }
 
 # Training Configuration
 TRAINING_CONFIG = {
-    'learning_rate': 0.005,
-    'batch_size': 10,
-    'epochs': 300,
+    'learning_rate': 0.001,
+    'batch_size': 32,               
+    'epochs': 500,
     'train_simulations': 19,
-    'weight_decay': 1e-5,
+    'weight_decay': 1e-4,        
     'validation_split': 0.2,
     'random_seed': 42,
     'test_size': 0.2,

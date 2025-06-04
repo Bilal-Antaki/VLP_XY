@@ -3,7 +3,7 @@ Linear regression baseline model for trajectory prediction
 """
 
 import numpy as np
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 
 
@@ -13,10 +13,10 @@ class LinearBaselineModel:
     Fits parameters that minimize average error across all trajectories
     """
     
-    def __init__(self):
-        """Initialize the linear models and scalers"""
-        self.model_x = LinearRegression()
-        self.model_y = LinearRegression()
+    def __init__(self, alpha=1.0):
+        """Initialize the ridge models and scalers"""
+        self.model_x = Ridge(alpha=alpha)
+        self.model_y = Ridge(alpha=alpha)
         self.scaler_features = StandardScaler()
         self.scaler_x = StandardScaler()
         self.scaler_y = StandardScaler()

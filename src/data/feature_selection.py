@@ -141,8 +141,13 @@ class FeatureSelector:
                                key=lambda x: x[1], 
                                reverse=True)
         
-        # Get top features
-        selected_features = [f[0] for f in sorted_features[:self.n_features]]
+        # Get top features (excluding mandatory ones first)
+        non_mandatory_features = [f[0] for f in sorted_features if f[0] not in self.mandatory_features]
+        n_additional = self.n_features - len(self.mandatory_features)
+        selected_additional = non_mandatory_features[:n_additional]
+        
+        # Combine mandatory and selected features
+        selected_features = self.mandatory_features + selected_additional
         
         # Store scores
         self.feature_scores['lasso'] = feature_score_dict

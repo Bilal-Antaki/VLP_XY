@@ -80,20 +80,3 @@ def train_model():
     
     errors_x = np.abs(y_val[:, 0] - y_pred[:, 0])
     errors_y = np.abs(y_val[:, 1] - y_pred[:, 1])
-    
-    # Print results
-    print("\nRandom Forest Results:")
-    print("-" * 40)
-    print(f"X coordinate:")
-    print(f"  RMSE: {rmse_x:.2f}")
-    print(f"  Std: {errors_x.std():.2f}")
-    print(f"  Mean: {np.mean(y_val[:, 0] - y_pred[:, 0]):.2f}")
-    
-    print(f"\nY coordinate:")
-    print(f"  RMSE: {rmse_y:.2f}")
-    print(f"  Std: {errors_y.std():.2f}")
-    print(f"  Mean: {np.mean(y_val[:, 1] - y_pred[:, 1]):.2f}")
-    
-    # Combined metric
-    rmse_combined = np.sqrt((rmse_x**2 + rmse_y**2) / 2)
-    print(f"\nCombined RMSE: {rmse_combined:.2f}")
